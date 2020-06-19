@@ -66,8 +66,8 @@ void WebServer::InitTrigMode_() {
 }
 
 void WebServer::init(){
-    InitTrigMode_();
     InitLog_();
+    InitTrigMode_();
     InitSqlPool_();
     InitSocket_();
     InitHttpConn_();
@@ -114,7 +114,7 @@ void WebServer::InitSocket_() {
 
     listenFd_ = socket(AF_INET, SOCK_STREAM, 0);
     if(listenFd_ < 0) {
-        perror("Create socket error");
+        LOG_ERROR("Listen port:%d Error", port_);
         exit(-1);
     }
     ret = bind(listenFd_, (struct sockaddr *)&serverAddr_, sizeof(serverAddr_));
@@ -259,12 +259,6 @@ bool WebServer::DealSignal_(bool &isTimeOut, bool &isClose) {
     return true;
 }
 
-// void WebServer::timerCbFunc(HttpConn* client, Epoll *epoll, int fd) {
-//     delete client;
-//     epoll->RemoveFd(fd);
-//     HttpConn::userCount--;
-// }
-
 void WebServer::timerCbFunc(WebServer* ins, int fd) {
     ins->epoll_->RemoveFd(fd);
     delete ins->clients_[fd].client;
@@ -286,4 +280,21 @@ void WebServer::taskWrite(HttpConn* client, SqlConnPool* connPool, bool isReacto
 
 void WebServer::taskRead(HttpConn* client) {
     client->write();
+}
+
+void WebServer::SetSignal(int sig, void(handler)(int), bool enableRestart) {
+    struct sigaction sa;
+    memset(&sa, '\0', sizeof(sa));
+    if(enableRestart) {
+        sa.sa_flags |= SA_RESTART;
+    }
+    sa.sa_handler = handler;
+    sigfillset(&sa.sa_mask); //初始化一个信号集合，包含所有的信号。
+    sigaction(sig, &sa, nullptr);
+}
+
+void WebServer::sigHandle(int sig) {
+    int tmpErrno = errno;
+    send(pipFds_[1], (char*)&sig, 1, 0);
+    errno = tmpErrno;
 }

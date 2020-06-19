@@ -3,6 +3,9 @@
  * @Date         : 2020-06-15
  * @copyleft GPL 2.0
  */ 
+#ifndef EPOLL_H
+#define EPOLL_H
+
 #include <sys/epoll.h> //epoll_ctl()
 #include <fcntl.h>  // fcntl()
 #include <unistd.h> // close()
@@ -30,9 +33,12 @@ public:
     uint32_t GetEvent(int i) const;
 
 private:
-    int eventSize_;
-    int timeout_;
     int epollFd_;
+
+    int eventSize_;
+
+    int timeout_;
 
     epoll_event *ev_;
 };
+#endif //EPOLL_H

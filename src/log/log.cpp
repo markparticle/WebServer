@@ -48,13 +48,17 @@ void Log::init(const char* path, const char* suffix,
     strcpy(path_, path);
     strcpy(suffix_, suffix);
 
-    char logFullName[LOG_NAME_LEN] = {0};
+    char fileName[LOG_NAME_LEN] = {0};
 
-    snprintf(logFullName, LOG_NAME_LEN - 1, "%s/%d_%02d_%02d%s", 
+    snprintf(fileName, LOG_NAME_LEN - 1, "%s/%d_%02d_%02d%s", 
             path_, t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, suffix_);
     toDay_ = t.tm_mday;
 
-    fp_ = fopen(logFullName, "a");
+    fp_ = fopen(fileName, "a");
+    if(fp_ == nullptr) {
+        mkdir(path_, 0777);
+        fp_ = fopen(fileName, "a");
+    } 
     assert(fp_ != nullptr);
 }
 

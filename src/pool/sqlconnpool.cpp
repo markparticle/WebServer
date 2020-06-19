@@ -78,7 +78,7 @@ void SqlConnPool::ClosePool() {
     }
 }
 
-int SqlConnPool::GetFreeConnCount() const {
+int SqlConnPool::GetFreeConnCount() {
     {
         lock_guard<mutex> locker(mtx_);
         return connQue_.size();

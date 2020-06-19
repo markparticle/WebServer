@@ -5,6 +5,8 @@
 !*.h
 !makefile
 
+*.log
 *.exe
+/.vscode
 /source.cpp
 /source.h

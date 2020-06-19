@@ -3,9 +3,10 @@
  * @Date         : 2020-06-19
  * @copyleft GPL 2.0
  */
+
 #include "epoll.h"
 
-Epoll::Epoll(int eventSize, int timeout) : 
+Epoll::Epoll(int eventSize, int timeout):
         eventSize_(eventSize), timeout_(timeout) {
     epollFd_ = epoll_create(5);
     ev_ = new epoll_event[eventSize];

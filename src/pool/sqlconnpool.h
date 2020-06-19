@@ -12,7 +12,7 @@
 #include <mutex>
 #include <semaphore.h>
 #include <thread>
-#include "log/log.h"
+#include "../log/log.h"
 
 class SqlConnPool
 {
