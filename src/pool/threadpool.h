@@ -16,7 +16,7 @@
 class ThreadPool {
 
 public:
-    explicit ThreadPool(size_t threadCount = 4): pool_(std::make_shared<Pool>()) {
+    explicit ThreadPool(size_t threadCount): pool_(std::make_shared<Pool>()) {
             for(size_t i = 0; i < threadCount; i++) {
                 std::thread([pool = pool_] {
                     std::unique_lock<std::mutex> locker(pool->mtx);
@@ -34,8 +34,11 @@ public:
                 }).detach();
             }
     }
+
     ThreadPool() = default;
+
     ThreadPool(ThreadPool&&) = default;
+    
     ~ThreadPool() {
         if(static_cast<bool>(pool_)) {
             {
@@ -54,14 +57,16 @@ public:
         }
         pool_->cond.notify_one();
     }
+    
 private:
     struct Pool {
         std::mutex mtx;
         std::condition_variable cond;
-        bool isClosedd;
+        bool isClosed;
         std::queue<std::function<void()>> tasks;
     };
     std::shared_ptr<Pool> pool_;
 };
+
 
 #endif //THREADPOOL_H
