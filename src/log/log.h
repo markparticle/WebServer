@@ -11,7 +11,6 @@
 #include <thread>
 #include <sys/time.h>
 #include <string.h>
-#include <vector>
 #include <stdarg.h> // vastart va_end
 #include <assert.h>
 #include "blockqueue.h"
@@ -23,16 +22,12 @@ public:
         int buffSize = 8192, int maxLines = 5000000,
         int maxQueueCapacity = 800);
 
-    static Log* GetInstance() {
-        static Log inst;
-        return &inst;
-    }
+    static Log* GetInstance();
 
-    static void FlushLogThread() {
-        Log::GetInstance()->AsyncWrite_();
-    }
+    static void FlushLogThread();
 
     void write(int level, const char *format,...);
+
     void flush();
 
 private:
@@ -55,7 +50,9 @@ private:
 
     FILE* fp_;
     char* buffer_;
+    
     BlockDeque<std::string> *deque_; 
+
     std::mutex mtx_;
     bool isAsync_;
     std::thread *writePID_;

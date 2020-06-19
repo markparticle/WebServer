@@ -145,3 +145,12 @@ void Log::AsyncWrite_() {
         fputs(str.c_str(), fp_);
     }
 }
+
+Log* Log::GetInstance() {
+    static Log inst;
+    return &inst;
+}
+
+void Log::FlushLogThread() {
+    Log::GetInstance()->AsyncWrite_();
+}
