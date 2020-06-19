@@ -1,0 +1,10 @@
+*
+!*.*
+!*/
+!*.cpp
+!*.h
+!makefile
+
+*.exe
+/source.cpp
+/source.h
