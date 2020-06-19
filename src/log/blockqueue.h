@@ -15,13 +15,19 @@ template<class T>
 class BlockDeque
 {
 public:
-    explicit BlockDeque(int MaxCapacity = 1000)
+    explicit BlockDeque(size_t MaxCapacity = 1000)
         :capacity_(MaxCapacity) {
         if(MaxCapacity < 0) exit(-1);
     }
 
-    ~BlockDeque() = default;
-
+    ~BlockDeque() {
+        {
+            std::lock_guard<std::mutex> locker(mtx_);
+            isClose_ = true;
+        } 
+        condProducer_.notify_all();
+        condConsumer_.notify_all();
+    };
     void clear() {
         {
             std::lock_guard<std::mutex> locker(mtx_);
@@ -52,13 +58,13 @@ public:
             return deq_.back();
         }
     }
-    int size() {
+    size_t size() {
         {
             std::lock_guard<std::mutex> locker(mtx_);
             return deq_.size();
         }
     }
-    int capacity() 
+    size_t capacity() 
     {
         return capacity_;
     }
@@ -85,18 +91,20 @@ public:
         condConsumer_.notify_one();
     }
 
-    T pop() {
-        T tmp;
+    bool pop(T &item) {
         {
             std::unique_lock<std::mutex> locker(mtx_);
             while(deq_.empty()){
                 condConsumer_.wait(locker);
+                if(isClose_ == true){
+                    return false;
+                }
             }
-            tmp = deq_.front();
+            item = deq_.front();
             deq_.pop_front();
         }
         condProducer_.notify_one();
-        return tmp;
+        return true;
     }
 
     bool pop(T &item, int timeout) {
@@ -108,7 +116,10 @@ public:
                 {
                     item = nullptr;
                     return false;
-                }           
+                }
+                if(isClose_ == true){
+                    return false;
+                }
             }
             item = deq_.front();
             deq_.pop_front();
@@ -119,8 +130,9 @@ public:
 
 private:
     std::deque<T> deq_;
-    int capacity_;
+    size_t capacity_;
     std::mutex mtx_;
+    bool isClose_;
     std::condition_variable condConsumer_;
     std::condition_variable condProducer_;
 };
