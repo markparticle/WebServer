@@ -25,6 +25,8 @@ public:
 
     bool full();
 
+    void Close();
+
     size_t size();
 
     size_t capacity();
@@ -58,10 +60,17 @@ private:
 template<class T>
 BlockDeque<T>::BlockDeque(size_t MaxCapacity) :capacity_(MaxCapacity) {
     if(MaxCapacity <= 0) exit(-1);
+    isClose_  = false;
 }
 
 template<class T>
 BlockDeque<T>::~BlockDeque() {
+    Close();
+};
+
+
+template<class T>
+void BlockDeque<T>::Close() {
     {
         std::lock_guard<std::mutex> locker(mtx_);
         isClose_ = true;
