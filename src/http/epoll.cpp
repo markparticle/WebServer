@@ -22,7 +22,8 @@ int Epoll::Wait() {
 }
 
 void Epoll::AddFd(int fd, bool enableET, bool enableOneShot) {
-    epoll_event ev;
+    assert(fd > 0);
+    epoll_event ev = { 0 };
     ev.data.fd = fd;
     if (enableET)
     {
@@ -41,11 +42,13 @@ void Epoll::AddFd(int fd, bool enableET, bool enableOneShot) {
 }
 
 void Epoll::RemoveFd(int fd) {
+    assert(fd > 0);
     epoll_ctl(epollFd_, EPOLL_CTL_DEL, fd, 0);
     close(fd);
 }
 
 void Epoll::Modify(int fd, uint32_t mode, bool enableET, bool enableOneShot) {
+    assert(fd > 0);
     epoll_event ev;
     ev.data.fd = fd;
     if (enableET)
@@ -72,9 +75,11 @@ int Epoll::GetFd() const {
 }
 
 int Epoll::GetEventFd(int i) const {
+    assert(i > 0);
     return ev_[i].data.fd;
 }
 
 uint32_t Epoll::GetEvent(int i) const {
+    assert(i > 0);
     return ev_[i].events;
 }
