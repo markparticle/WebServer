@@ -12,7 +12,9 @@
 #include <queue>
 #include <thread>
 #include <functional>
+#include "../http/httpconn.h"
 
+class  HttpConn;
 class ThreadPool {
 
 public:
@@ -22,10 +24,11 @@ public:
                     std::unique_lock<std::mutex> locker(pool->mtx);
                     while(true) {
                         if(!pool->tasks.empty()) {
-                            auto current = std::move(pool->tasks.front());
+                            auto task = std::move(pool->tasks.front().callback);
+                            auto arg = pool->tasks.front().arg;
                             pool->tasks.pop();
                             locker.unlock();
-                            current();
+                            task(arg);
                             locker.lock();
                         } 
                         else if(pool->isClosed) break;
@@ -50,20 +53,24 @@ public:
     }
 
     template<class F>
-    void addTask(F&& task) {
+    void addTask(F&& task, HttpConn* arg) {
         {
             std::lock_guard<std::mutex> locker(pool_->mtx);
-            pool_->tasks.emplace(std::forward<F>(task));
+            pool_->tasks.emplace(Node{std::forward<F>(task), arg});
         }
         pool_->cond.notify_one();
     }
     
 private:
+    struct Node {
+        std::function<void(HttpConn*)> callback;
+        HttpConn* arg;
+    };
     struct Pool {
         std::mutex mtx;
         std::condition_variable cond;
         bool isClosed;
-        std::queue<std::function<void()>> tasks;
+        std::queue<Node> tasks;
     };
     std::shared_ptr<Pool> pool_;
 };
