@@ -10,7 +10,7 @@
 #include <unordered_map>
 
 #include "log/log.h"
-#include "utils/heaptimer.h"
+#include "timer/heaptimer.h"
 #include "pool/sqlconnpool.h"
 #include "pool/threadpool.h"
 #include "pool/sqlconnRAII.h"
@@ -27,19 +27,12 @@ public:
 
     typedef std::function<void()> CallbackFunc;
 
-    void init();
-
-    void start();
-
+    void Init();
+    void Start();
+    void Close();
     bool IsCloseLog() { return isCloseLog_; }
 
     enum class ActorMode { PROACTOR = 0, REACTOR };
-
-    struct ClientInfo {
-        HttpConn *client;
-        int timerId;
-    };
-    
     struct LogConfig {
         std::string path;
         std::string suffix;
@@ -57,10 +50,11 @@ public:
         bool isCloseLog;
     };
 
-    static const int MAX_FD = 65536;
+    static const int MAX_FD = 50;
     static const int MAX_EVENT_SIZE = 10000;
-    static const time_t TIME_SLOT = 5;
+    static const time_t TIME_SLOT = 3;
     static int pipFds_[2];
+    static const int MAX_PATH = 256;
 
 private:
     void InitLog_(); 
@@ -69,20 +63,22 @@ private:
     void InitTrigMode_();
     void InitHttpConn_();
     void InitThreadPool_();
-    
-    bool DealListen_();
-    bool DealSignal_(bool &isTimeOut, bool &isClose);
+
+    void AddClient_(int fd, sockaddr_in addr);
+  
+    void DealListen_();
+    bool DealSignal_(bool &isTimeOut);
     void DealTimeOut_();
     void DealWrite_(int fd);
     void DealRead_(int fd);
 
-    void addClient_(int clientFd, sockaddr_in addr);
-    bool ExtentTime_(int timerId);
+    void SendError_(int fd, const char*info);
+    bool ExtentTime_(HttpConn* client);
 
-    static void timerCbFunc(WebServer* ins, int fd);
 
-    static void taskWrite(HttpConn* client, SqlConnPool* connPool_, bool isReactor);
-    static void taskRead(HttpConn* client);
+    static void ReadCallback(HttpConn* client);
+
+    static void WriteCallback(HttpConn* client);
 
     static void SetSignal(int sig, void(handler)(int), bool enableRestart = true);
     static void sigHandle(int sig) ;
@@ -91,7 +87,7 @@ private:
     bool isCloseLog_;
     int listenFd_;
     int port_;
-    char* resPath_;
+    char resPath_[MAX_PATH];
     int threadNum_;
 
     int trigMode_;
@@ -108,13 +104,13 @@ private:
 
     SqlConfig sqlConfig_;
 
-    SqlConnPool *connPool_;
+    SqlConnPool* connPool_;
 
     ThreadPool* threadpool_;
 
-    HeapTimer timer_;
+    HeapTimer* timer_;
 
-    std::unordered_map<int, ClientInfo> clients_;
+    std::unordered_map<int, HttpConn*> users_;
 };
 
 
