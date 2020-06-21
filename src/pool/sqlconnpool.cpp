@@ -74,8 +74,8 @@ void SqlConnPool::ClosePool() {
             auto item = connQue_.front();
             connQue_.pop();
             mysql_close(item);
-            mysql_library_end();
-        }        
+        }
+        mysql_library_end();        
     }
 }
 
