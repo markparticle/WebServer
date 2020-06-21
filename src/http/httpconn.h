@@ -18,8 +18,14 @@
 #include <sys/uio.h>   // readv/writev
 #include <errno.h>     // errno
 #include <mysql/mysql.h> //mysql
+#include <arpa/inet.h> //sockaddr_in
+#include <sys/types.h>
+#include <sys/socket.h>
 #include "epoll.h"
 #include "../log/log.h"
+#include "../pool/threadpool.h"
+#include "../pool/sqlconnRAII.h"
+
 
 class HttpConn {
 public:
@@ -58,19 +64,30 @@ public:
         LINE_OPEN,
     };
 
-public:
-    HttpConn(int sockFd, sockaddr_in addr)
-        :fd_(sockFd), addr_(addr)
-    { 
-        epollPtr->AddFd(sockFd);
-        Init_(); 
-    }
-    ~HttpConn() = default;
+    struct RequestMsg {
+        HttpConn::METHOD method;
+        int contextLen;
+        char* context;
+        char* host;
+        char* version;
+        char* url;
+        bool cgi;
+        bool isKeepAlive;
+    };
 
+public:
+    HttpConn() {
+        Init_();
+    };
+    ~HttpConn() { CloseConn(); };
+
+    void init(int sockFd, const sockaddr_in& addr);
+   // bool read();
     bool read();
     bool write();
     void process();
     void CloseConn();
+
     // void InitMySQLResult();
     // void InitResultFile();
     static bool IsCloseLog() { return isCloseLog; };
@@ -80,7 +97,44 @@ public:
     static char* resPath;
     static bool isCloseLog;
     static bool isET;
-    MYSQL *mysql_;
+    static SqlConnPool* connPool;
+
+
+    int GetFd() const;
+
+    struct sockaddr_in GetAddr() const {
+        return addr_;
+    }
+
+    const char* GetIP() const {
+        return inet_ntoa(addr_.sin_addr);
+    }
+
+    int GetPort() const {
+        return addr_.sin_port;
+    }
+    time_t GetExpires() const {
+        return expires_;
+    }
+    void SetExpires(time_t expires)  {
+        expires_ = expires;
+    }
+    int GetIndex() const {
+        return index_;
+    }
+    void SetIndex(int idx) {
+        index_ = idx;
+    }
+    int GetFd(int idx) const {
+        return index_;
+    }
+
+    void BindSql(MYSQL * mysql) {
+        mysql_ = mysql;
+    }
+    MYSQL *  GetSql() const {
+        return mysql_;
+    }
     
 private:
     static const int PATH_LEN = 200;
@@ -96,7 +150,7 @@ private:
     HTTP_CODE ParseRequestLine_(char *text);
     HTTP_CODE ParseHeader_(char *text);
     HTTP_CODE ParseContent_(char *text);
-    HTTP_CODE DoRequest_();
+    HTTP_CODE WriteParseMsg_();
 
     bool AddResponse_(const char* format,...);
     bool AddStatusLine_(int status, const char* title);
@@ -107,12 +161,13 @@ private:
     bool AddLinger_();
     bool AddBlinkLine_();
 
-    HTTP_CODE ProcessRead_();
-    bool ProcessWrite_(HTTP_CODE ret);
+    HTTP_CODE ParseHttpMsg_();
+    bool GenerateHttpMsg_(HTTP_CODE ret);
 
-    
+    time_t expires_;
+    int index_;
     int fd_;
-    sockaddr_in addr_;
+    struct  sockaddr_in addr_;
 
     char readBuff_[READ_BUFF_SIZE];
     size_t readIdx_;
@@ -124,16 +179,9 @@ private:
 
     CHECK_STATE checkState_;
 
-    struct RequestMsg {
-        HttpConn::METHOD method;
-        int contextLen;
-        char* context;
-        char* host;
-        char* version;
-        char* url;
-        bool cgi;
-        bool isKeepAlive;
-    } requestMsg_;
+    bool isClose_;
+
+    RequestMsg requestMsg_;
 
     char* fileAddr_;
     int iovCount_;
@@ -142,6 +190,8 @@ private:
 
     size_t bytesTosSend_;
     size_t bytesHaveSend_;
+
+    MYSQL *mysql_;
 };
 
 
