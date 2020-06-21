@@ -9,13 +9,14 @@
 //#include <stdio.h>
 
 int main() {
-
-    WebServer server(1314, 3306, "root", "root", "webserver", 2, 8, 3, true, true, false, 800);
-    server.start();
-    // ThreadPool(4);
-    // Log::GetInstance()->init();
-    // SqlConnPool::GetInstance();
-    // sockaddr_in addr;
-    // HttpConn S(0, addr);
-    getchar();
+    WebServer server(1314, 3306, "root", "root", "webserver", 10, 8, 3, true, false, false, 100);
+    server.Init();
+    server.Start();
 }
+
+
+
+
+
+
+
