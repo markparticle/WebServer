@@ -19,8 +19,7 @@
 class Log 
 {
 public:
-    void init(const char* path = "./log", const char* suffix =".log",
-        int buffSize = 8192, int maxLines = 5000000,
+    void init(const char* path = "./log", const char* suffix =".log", int maxLines = 5000000,
         int maxQueueCapacity = 800);
 
     static Log* GetInstance();
@@ -43,8 +42,8 @@ private:
     char path_[LOG_PATH_LEN];
     char suffix_[LOG_NAME_LEN];
 
-    int MAX_LINE;
-    int BUFF_SIZE;
+    int MAX_LINES_;
+    int BUFF_SIZE_;
 
     int lineCount_;
     int toDay_;
@@ -68,16 +67,18 @@ private:
         }\
     } while(0);
 
-#define LOG_DEBUG(format, ...) do {LOG_BASE(0, format, ##__VA_ARGS__)} while(0);
+
+#define LOG_DEBUG(format, ...) \
+    do {\
+            Log::GetInstance()->write(0, format, ##__VA_ARGS__); \
+            Log::GetInstance()->flush();\
+    } while(0);
+
+// #define LOG_DEBUG(format, ...) do {LOG_BASE(0, format, ##__VA_ARGS__)} while(0);
 #define LOG_INFO(format, ...) do {LOG_BASE(1, format, ##__VA_ARGS__)} while(0);
 #define LOG_WARN(format, ...) do {LOG_BASE(2, format, ##__VA_ARGS__)} while(0);
 #define LOG_ERROR(format, ...) do {LOG_BASE(3, format, ##__VA_ARGS__)} while(0);
 
-#define LOG(level, format, ...) \
-    do {\
-        Log::GetInstance()->write(level, format, ##__VA_ARGS__); \
-        Log::GetInstance()->flush();\
-    } while(0);
 
 
 #endif //LOG_H

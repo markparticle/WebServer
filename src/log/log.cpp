@@ -13,8 +13,8 @@ Log::Log() {
     writePID_ = nullptr;
     deque_ = nullptr;
 
-    MAX_LINE = 0;
-    BUFF_SIZE = 0;
+    MAX_LINES_ = 0;
+    BUFF_SIZE_ = 0;
     lineCount_ = 0;
     toDay_ = 0;
     fp_ = nullptr;
@@ -37,18 +37,17 @@ Log::~Log() {
     }
 }
 
-void Log::init(const char* path, const char* suffix,
-    int buffSize, int maxLines,
+void Log::init(const char* path, const char* suffix, int maxLines,
     int maxQueueSize) {
     if(maxQueueSize > 0) {
         isAsync_ = true;
         deque_ = new BlockDeque<string>(maxQueueSize);
         writePID_ = new thread(FlushLogThread);
     }
-    BUFF_SIZE = buffSize;
-    buffer_ = new char[BUFF_SIZE];
-    memset(buffer_, '\0', BUFF_SIZE);
-    MAX_LINE = maxLines;
+    BUFF_SIZE_ = 128;
+    buffer_ = new char[BUFF_SIZE_];
+    memset(buffer_, '\0', BUFF_SIZE_);
+    MAX_LINES_ = maxLines;
 
     time_t timer = time(nullptr);
     struct tm *sysTime = localtime(&timer);
@@ -73,10 +72,10 @@ void Log::init(const char* path, const char* suffix,
 
 void Log::write(int level, const char *format, ...) {
     int fLen = strlen(format) + 40;
-    while(fLen > BUFF_SIZE) {
-        BUFF_SIZE += (BUFF_SIZE + 1) / 2;
+    while(fLen > BUFF_SIZE_) {
+        BUFF_SIZE_ += (BUFF_SIZE_ + 1) / 2;
         delete[] buffer_;
-        buffer_ = new char[BUFF_SIZE];
+        buffer_ = new char[BUFF_SIZE_];
     }
 
     struct timeval now = {0, 0};
@@ -91,16 +90,16 @@ void Log::write(int level, const char *format, ...) {
         strcpy(str, "[debug]:");
         break;
     case 1:
-        strcpy(str, "[info]:");
+        strcpy(str, " [info]:");
         break;
     case 2:
-        strcpy(str, "[warn]:");
+        strcpy(str, " [warn]:");
         break;
     case 3:
         strcpy(str, "[error]:");
         break;
     default:
-        strcpy(str, "[info]:");
+        strcpy(str, " [info]:");
         break;
     }
     {
@@ -108,7 +107,7 @@ void Log::write(int level, const char *format, ...) {
         lock_guard<mutex> locker(mtx_);
         lineCount_++;
         //如果不是今天日志或者满了
-        if(toDay_ != t.tm_mday || lineCount_ % MAX_LINE == 0) {
+        if(toDay_ != t.tm_mday || lineCount_ % MAX_LINES_ == 0) {
             char newFile[LOG_NAME_LEN];
             fflush(fp_);
             fclose(fp_);
@@ -121,7 +120,7 @@ void Log::write(int level, const char *format, ...) {
                 lineCount_ = 0;
             } else {
                 snprintf(newFile, LOG_NAME_LEN - 1, "%s/%s-%d%s", 
-                    path_, tail, lineCount_ / MAX_LINE, suffix_);
+                    path_, tail, lineCount_ / MAX_LINES_, suffix_);
             }
             fp_ = fopen(newFile, "a");
             assert(fp_ != nullptr);
@@ -133,11 +132,11 @@ void Log::write(int level, const char *format, ...) {
     string context = "";
     {
         lock_guard<mutex> locker(mtx_);
-        memset(buffer_, 0, BUFF_SIZE);
+        memset(buffer_, 0, BUFF_SIZE_);
         int n = snprintf(buffer_, 48, "%d-%02d-%02d %02d:%02d:%02d.%06ld %s ",
             t.tm_year + 1900, t.tm_mon + 1, t.tm_mday,
             t.tm_hour, t.tm_min, t.tm_sec, now.tv_usec, str);
-        int m = vsnprintf(buffer_ + n, BUFF_SIZE - 1, format, vaList);
+        int m = vsnprintf(buffer_ + n, BUFF_SIZE_ - 1, format, vaList);
         buffer_[n + m] = '\n';
         buffer_[n + m + 1] = '\0';
         context = buffer_;
