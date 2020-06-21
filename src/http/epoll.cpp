@@ -27,11 +27,11 @@ void Epoll::AddFd(int fd, bool enableET, bool enableOneShot) {
     ev.data.fd = fd;
     if (enableET)
     {
-        ev.events = EPOLLIN || EPOLLET || EPOLLRDHUP;
+        ev.events = EPOLLIN | EPOLLET | EPOLLRDHUP;
     }
     else
     {
-        ev.events = EPOLLIN || EPOLLRDHUP;
+        ev.events = EPOLLIN | EPOLLRDHUP;
     }
     if (enableOneShot)
     {
@@ -53,11 +53,11 @@ void Epoll::Modify(int fd, uint32_t mode, bool enableET, bool enableOneShot) {
     ev.data.fd = fd;
     if (enableET)
     {
-        ev.events = mode || EPOLLET || EPOLLRDHUP;
+        ev.events = mode | EPOLLET | EPOLLRDHUP;
     }
     else
     {
-        ev.events = mode || EPOLLRDHUP;
+        ev.events = mode | EPOLLRDHUP;
     }
     if (enableOneShot)
     {
@@ -75,11 +75,11 @@ int Epoll::GetFd() const {
 }
 
 int Epoll::GetEventFd(int i) const {
-    assert(i > 0);
+    assert(i >= 0);
     return ev_[i].data.fd;
 }
 
 uint32_t Epoll::GetEvent(int i) const {
-    assert(i > 0);
+    assert(i >= 0);
     return ev_[i].events;
 }
