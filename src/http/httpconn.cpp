@@ -3,8 +3,8 @@
  * @Date         : 2020-06-15
  * @copyleft GPL 2.0
  */ 
-
 #include "httpconn.h"
+#include <iostream>
 
 const char *OK_200_TITLE= "OK";
 const char *ERROR_400_TITLE = "Bad Request";
@@ -17,55 +17,73 @@ const char *ERROR_500_TITLE = "Internal Error";
 const char *ERROR_500_FORM = "There was an unusual problem serving the request file.\n";
 
 Epoll* HttpConn::epollPtr;
+SqlConnPool* HttpConn::connPool;
+//eapTimer* timer;
 char* HttpConn::resPath;
 int HttpConn::userCount;
-bool HttpConn::isCloseLog;
+bool HttpConn::openLog;
 bool HttpConn::isET;
-SqlConnPool* HttpConn::connPool;
+
+HttpConn::HttpConn() { 
+    readBuff_ = new char[READ_BUFF_SIZE];
+    writeBuff_ = new char[WRITE_BUFF_SIZE];
+    expires_ = 0;
+    Init_(); 
+};
+
+HttpConn::~HttpConn() { 
+    delete[] readBuff_;
+    delete[] writeBuff_;
+    CloseConn(); 
+};
 
 void HttpConn::init(int fd, const struct sockaddr_in& addr) {
     assert(fd > 0);
     Init_();
+    userCount++;
     isClose_ = false;
     addr_ = addr;
     fd_ = fd;
     epollPtr->AddFd(fd);
-    LOG_INFO("Client[%d](%s:%d) in.", fd_, GetIP(), GetPort());
+    LOG_INFO("Client[%d](%s:%d) in", fd_, GetIP(), GetPort());
 }
 
 void HttpConn::Init_() {
     fd_ = -1;
-    addr_ = {0};
+    addr_ = { 0 };
     isClose_ = true;
     readIdx_ = 0;
     checkIdx_ = 0;
     startLine_ = 0;
     writeIdx_ = 0;
+
     memset(readBuff_, 0, READ_BUFF_SIZE);
     memset(writeBuff_, 0, WRITE_BUFF_SIZE);
 
     checkState_ = REQUESTLINE;
-    requestMsg_ = {GET, 0, nullptr, nullptr, nullptr, nullptr, false ,false};
+
+    request_.content = request_.method = request_.method = request_.version = "";
+    request_.contentLen = 0;
+    request_.header.clear();
     
     bytesTosSend_ = 0;
     bytesHaveSend_ = 0;
-
-    time_t expires_ = -1;
-    int index_ = -1;
 }
 
 void HttpConn::CloseConn() {
-    if(isClose_ == false && fd_ > 0){
+    if(isClose_ == false){
         isClose_ = true;
         epollPtr->RemoveFd(fd_);
-        LOG_INFO("Client[%d](%s:%d) quit.", fd_, GetIP(), GetPort());
         userCount--;
-        fd_ = -1;
+        LOG_INFO("Client[%d](%s:%d) quit, UserCount:%d", fd_, GetIP(), GetPort(), userCount);
     }
 }
 
+bool HttpConn::IsClose() const {
+    return isClose_;
+};
+
 int HttpConn::GetFd() const {
-    assert(isClose_ == false);
     return fd_;
 };
 
@@ -78,29 +96,33 @@ bool HttpConn::read() {
             readIdx_ += len;
             return true;
         }
+        return false;
     }
     else {
         while (!isClose_)
         {
             len = recv(fd_, readBuff_ + readIdx_, READ_BUFF_SIZE - readIdx_, 0);
-            if(len == -1) {
-                //如果读完了就退出
+            if(len > 0) {
+                readIdx_ += len;
+            }
+            else {
+                /* 读写完毕或不需要重新读或者写 */ 
                 if(errno == EAGAIN || errno == EWOULDBLOCK) {
                     return true;
-                };
+                } 
+                else {
+                    return false;
+                }
             } 
-            else if(len == 0) {
-                break;
-            }
-            readIdx_ += len;
         }
     }
-    return false;
 }
 
 bool HttpConn::write() {
     //无数据
+    LOG_DEBUG("Send to client[%d] response", fd_);
     if(bytesTosSend_ == 0) {
+        LOG_DEBUG("Not Data to client[%d] response", fd_);
         epollPtr->Modify(fd_, EPOLLIN, isET);
         Init_();
         return true;
@@ -111,10 +133,11 @@ bool HttpConn::write() {
         if(len > 0) {
             bytesHaveSend_ += len;
             offset = bytesHaveSend_ - writeIdx_;
-        } else {
-            //如果写入结束
+        } 
+        else {
+            /* 发送完成 */
             if(errno == EAGAIN) {
-                LOG_DEBUG("Respone to client[%d]", fd_);
+                LOG_DEBUG("Send response to client[%d] success!", fd_);
                 if(bytesHaveSend_ >= iov_[0].iov_len) {
                     iov_[0].iov_len = 0;
                     iov_[1].iov_base = fileAddr_ + offset;
@@ -126,7 +149,8 @@ bool HttpConn::write() {
                 epollPtr->Modify(fd_, EPOLLOUT, isET);
                 return true;
             }
-            //写入失败
+            /* 发送失败 */
+            LOG_ERROR("Send client[%d] respond error", fd_);
             Unmap_();
             return false;
         }
@@ -134,7 +158,8 @@ bool HttpConn::write() {
         if(bytesTosSend_ <= 0) {
             Unmap_();
             epollPtr->Modify(fd_, EPOLLIN, isET);
-            if(requestMsg_.isKeepAlive) {
+            if(request_.header["keep-alive"] == "true") {
+                LOG_DEBUG("client[%d] keep-alive", fd_);
                 Init_();
                 return true;
             } else {
@@ -142,7 +167,34 @@ bool HttpConn::write() {
             }
         }
     }
-    return true;
+}
+
+struct sockaddr_in HttpConn::GetAddr() const {
+    return addr_;
+}
+
+const char* HttpConn::GetIP() const {
+    return inet_ntoa(addr_.sin_addr);
+}
+
+int HttpConn::GetPort() const {
+    return addr_.sin_port;
+}
+
+time_t HttpConn::GetExpires() const {
+    return expires_;
+}
+
+void HttpConn::SetExpires(time_t expires)  {
+    expires_ = expires;
+}
+
+void HttpConn::BindSql(MYSQL * mysql) {
+    mysql_ = mysql;
+}
+
+MYSQL* HttpConn::GetSql() const {
+    return mysql_;
 }
 
 void HttpConn::Unmap_() {
@@ -167,9 +219,10 @@ HttpConn::LINE_STATUS HttpConn::ParseLine_() {
             }
             return LINE_BAD;
         }
-        else if(ch == '\n') {
+        else if(ch == '\n') { 
+            /* 行尾 */
             if(checkIdx_ > 1 && readBuff_[checkIdx_ - 1] == '\r') {
-                readBuff_[checkIdx_++] = '\0';
+                readBuff_[checkIdx_ - 1] = '\0';
                 readBuff_[checkIdx_++] = '\0';
                 return LINE_OK;
             }
@@ -179,96 +232,51 @@ HttpConn::LINE_STATUS HttpConn::ParseLine_() {
     return LINE_OPEN;
 }
 
-HttpConn::HTTP_CODE HttpConn::ParseRequestLine_(char* text) {
-    //解析 method URL vision
-    char* url = strpbrk(text, " \t");
-    if(!url) {
-        return BAD_REQUEST;
-    }
-    *url++ = '\0';
+HttpConn::HTTP_CODE HttpConn::ParseRequestLine_(std::string line) {
+    std::regex patten("^([^ ]*) ([^ ]*) HTTP/([^ ]*)$");
+    std::smatch subMatch;
 
-    char *method = text;
-    if(strcasecmp(method, "GET") == 0) {
-        requestMsg_.method = GET;
+    if (std::regex_match(line, subMatch, patten))
+    {   
+        request_.method = subMatch[1];
+        request_.path = subMatch[2];
+        request_.version = subMatch[3];
+        LOG_DEBUG("client[%d]: [%s], [%s], [%s]", fd_,
+                request_.method.c_str(), 
+                request_.path.c_str(), 
+                request_.version.c_str());
+        checkState_ = HEADER;
+        return NO_REQUEST;
     } 
-    else if(strcasecmp(method, "POST") == 0) {
-        requestMsg_.method = POST;
-        requestMsg_.cgi = true;
-    } else {
-        return BAD_REQUEST;
-    }
-
-    //跳过多余的空格或\t
-    url += strspn(url, " \t");
-
-    requestMsg_.version = strpbrk(url, " \t");
-    if(requestMsg_.version) {
-        return BAD_REQUEST;
-    }
-    *requestMsg_.version++ = '\0';
-    requestMsg_.version = strpbrk( requestMsg_.version, " \t");
-    if(strcasecmp(requestMsg_.version, "HTTP/1.1") != 0) {
-        return BAD_REQUEST;
-    }
-
-    //跳过请求中的http://.../
-    if(strncasecmp(url, "http://", 7) == 0) {
-        url += 7;
-        requestMsg_.url = strchr(url, '/');
-    }
-    else if(strncasecmp(url, "https://", 8) == 0) {
-        url += 8;
-        requestMsg_.url = strchr(url, '/');
-    }
-
-    if(!url || url[0] != '/') {
-        return BAD_REQUEST;
-    }
-    if(strlen(url) == 1) {
-        strcat(requestMsg_.url, "judge.html");
-    }
-    checkState_ = HEADER;
-    return NO_REQUEST;
+    return BAD_REQUEST;
 }
 
-HttpConn::HTTP_CODE HttpConn::ParseHeader_(char *text) {
-    if(text[0] == '\0') {
-        if(requestMsg_.contextLen > 0) {
+HttpConn::HTTP_CODE HttpConn::ParseHeader_(std::string line) {
+    std::regex patten("^([^:]*): ?(.*)$");
+    std::smatch subMatch;
+    if(line[0] == '\0') {
+        return GET_REQUEST;
+    }
+    if(std::regex_match(line, subMatch, patten)) {
+        request_.header[subMatch[1]] = subMatch[2];
+    }
+    if(request_.header.count("Content-Length") > 0){
+        request_.contentLen = stoi(request_.header["Content-Length"]);
+        if(request_.contentLen >= 0) {
             checkState_ = CONTENT;
+            return NO_REQUEST;
         }
-    } else if(strncasecmp(text, "Connection:", 11) == 0) {
-        text += 11;
-        text += strspn(text, " \t");
-        if(strcasecmp(text, "keep-alive") == 0) {
-            requestMsg_.isKeepAlive = true;
-        }
-    } 
-    else if(strncasecmp(text, "Context-length:", 15) == 0) {
-        text += 15;
-        text += strspn(text, " \t");
-        requestMsg_.contextLen = atoi(text);
-    }
-    else if(strncasecmp(text, "Host", 5) == 0) {
-        text += 5;
-        text += strspn(text, " \t");
-        requestMsg_.host = text;
-    } else {
-        LOG_INFO("unknow header: %s", text);
     }
     return NO_REQUEST;
 }
-
-HttpConn::HTTP_CODE HttpConn::ParseContent_(char *text) {
-    if(readIdx_ >= (checkIdx_ + requestMsg_.contextLen)) {
-        text[requestMsg_.contextLen] = '\0';
-        requestMsg_.context = text;
+HttpConn::HTTP_CODE HttpConn::ParseContent_(std::string line) {
+    if(readIdx_ >= (checkIdx_ + request_.contentLen)) {
+        line[request_.contentLen] = '\0';
+        request_.content = line;
+        LOG_DEBUG("client[%d] context:%s", fd_, line);
         return GET_REQUEST;
     }
     return NO_REQUEST;
-}
-
-char* HttpConn::GetLine_() {
-    return readBuff_ + startLine_;
 }
 
 HttpConn::HTTP_CODE HttpConn::ParseHttpMsg_()
@@ -279,8 +287,9 @@ HttpConn::HTTP_CODE HttpConn::ParseHttpMsg_()
 
     while(((lineStatue = ParseLine_()) == LINE_OK)
         || (checkState_ == CONTENT && lineStatue == LINE_OK)) {
-        text = GetLine_();
+        text = readBuff_ + startLine_;
         startLine_ = checkIdx_;
+        
         switch (checkState_)
         {
         case REQUESTLINE:
@@ -304,33 +313,20 @@ HttpConn::HTTP_CODE HttpConn::ParseHttpMsg_()
             break;
         } 
         if(ret == GET_REQUEST) {
-            return WriteParseMsg_();
+            return DoRequest_();
         }
     }
     return ret;
 }
 
-HttpConn::HTTP_CODE HttpConn::WriteParseMsg_() {
-    char filePath[PATH_LEN];
-    strcpy(filePath, resPath);
+HttpConn::HTTP_CODE HttpConn::DoRequest_() {
+    std::string filePath = resPath;
     int len = strlen(resPath);
-    const char* p = strrchr(requestMsg_.url, '/');
-    char fileName[PATH_LEN];
-    switch (p[1])
-    {
-    case '0':
-        strcpy(fileName, "/register.html");
-        break;
-    case '1':
-        strcpy(fileName, "/log.html");
-        break;
-    default:
-        strcpy(fileName, requestMsg_.url);
-        break;
+    if(request_.path == "/") {
+        request_.path += "index.html";
     }
-    strncpy(filePath + len, fileName, PATH_LEN - len - 1);
-
-    if(stat(filePath, &fileStat_) < 0) {
+    filePath += request_.path;
+    if(stat(filePath.c_str(), &fileStat_) < 0) {
         return NO_RESOURSE;
     }
     if(!(fileStat_.st_mode & S_IROTH)) {
@@ -339,7 +335,8 @@ HttpConn::HTTP_CODE HttpConn::WriteParseMsg_() {
     if(S_ISDIR(fileStat_.st_mode)) {
         return BAD_REQUEST;
     }
-    int fd = open(filePath, O_RDONLY);
+    
+    int fd = open(filePath.c_str(), O_RDONLY);
     fileAddr_ = (char*)mmap(0, fileStat_.st_size, PROT_READ, MAP_PRIVATE, fd, 0);
     close(fd);
     return FILE_REQUEST;
@@ -364,7 +361,7 @@ bool HttpConn::AddContextType_() {
 }
 
 bool HttpConn::AddLinger_() {
-    return AddResponse_("Connection:%s\r\n", (requestMsg_.isKeepAlive == true) ? "keep-alive" : "close");
+    return AddResponse_("Connection:%s\r\n", request_.header["Connection"]);
 }
 
 bool HttpConn::AddBlinkLine_() {
@@ -407,17 +404,26 @@ bool HttpConn::GenerateHttpMsg_(HTTP_CODE ret) {
         if(!flag) { return false;}
     }
     break;
+    case NO_RESOURSE:
+    {
+        flag = (AddStatusLine_(404, ERROR_404_TITLE)
+            && AddHeader_(strlen(ERROR_404_TITLE)) 
+            && AddContent_(ERROR_404_TITLE));
+        if(!flag) { return false;}
+    }
+    break;
     case FORBIDDENT_REQUEST:
     {
         flag = (AddStatusLine_(403, ERROR_403_TITLE)
             && AddHeader_(strlen(ERROR_403_TITLE))
             && AddContent_(ERROR_403_TITLE));
-        if(!flag) { return false;}
+        if(!flag) { return false; }
     }
     break;
     case FILE_REQUEST:{
+        flag = AddStatusLine_(200, OK_200_TITLE);
         if(fileStat_.st_size > 0) {
-            AddHeader_(fileStat_.st_size);
+            flag |= AddHeader_(fileStat_.st_size);
             iov_[0].iov_base = writeBuff_;
             iov_[0].iov_len = writeIdx_;
 
@@ -427,7 +433,11 @@ bool HttpConn::GenerateHttpMsg_(HTTP_CODE ret) {
 
             bytesTosSend_ = writeIdx_ + fileStat_.st_size;
             return true;
+        } else {
+            const char *t = "<html><body></body></html>";
+            flag |= AddHeader_(strlen(t)) && AddContent_(t);
         }
+        if(!flag) { return false; }
     }
     default:
         return false;
@@ -445,21 +455,23 @@ void HttpConn::process() {
     if(read()) {
         //读取成功，开始解析数据
         auto ret = ParseHttpMsg_();
-        LOG_DEBUG("parse ret %d", ret);
+        LOG_DEBUG("parse client[%d] ret %d", fd_, ret);
         if(ret == HttpConn::HTTP_CODE::NO_REQUEST) {
-            //解析不完整，请求读
+            //解析不完整，继续读
             LOG_DEBUG("Generated client[%d] request read!", fd_);
             epollPtr->Modify(fd_, EPOLLIN, isET);
         }
         else if(GenerateHttpMsg_(ret)) {
             //已生成报文
-            LOG_DEBUG("Generated client[%d] success!", fd_);
+            LOG_DEBUG("Generated respons to client[%d] success!", fd_);
             epollPtr->Modify(fd_, EPOLLOUT, isET);
-        } else {
-            LOG_DEBUG("Generated client[%d] error!", fd_);
+        } 
+        else {
+            LOG_WARN("Generated respons client[%d] error!", fd_);
             CloseConn();
         }
-    } else {
+    }
+    else {
         LOG_WARN("Read client[%d] msg error!", fd_);
         CloseConn();
     }

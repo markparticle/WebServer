@@ -8,24 +8,31 @@
 #define HTTPCONN_H
 
 #include <sys/socket.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <sys/mman.h>  // mmap()
+#include <sys/stat.h>   // stat()
+#include <sys/uio.h>   // readv/writev
+
 #include <arpa/inet.h> // sockaddr_in
+
 #include <stdio.h>  // vsnparintf()
 #include <stdlib.h> //atoi()
 #include <string.h>   //strcpy()
-#include <sys/mman.h>  // mmap()
-#include <sys/stat.h>   // stat()
 #include <stdarg.h>    // va_list
-#include <sys/uio.h>   // readv/writev
+
 #include <errno.h>     // errno
 #include <mysql/mysql.h> //mysql
-#include <arpa/inet.h> //sockaddr_in
-#include <sys/types.h>
-#include <sys/socket.h>
+
+#include <unordered_map>
+#include <string>
+#include <regex>
+
 #include "epoll.h"
 #include "../log/log.h"
 #include "../pool/threadpool.h"
 #include "../pool/sqlconnRAII.h"
-
+//#include "../timer/heaptimer.h"
 
 class HttpConn {
 public:
@@ -63,94 +70,63 @@ public:
         LINE_BAD,
         LINE_OPEN,
     };
-
-    struct RequestMsg {
-        HttpConn::METHOD method;
-        int contextLen;
-        char* context;
-        char* host;
-        char* version;
-        char* url;
-        bool cgi;
-        bool isKeepAlive;
+    
+    struct Request {
+        std::string method, path, version;
+        std::string content;
+        int contentLen;
+        std::unordered_map<std::string, std::string> header;
+        //std::smatch pathMatch;
     };
 
 public:
-    HttpConn() {
-        Init_();
-    };
-    ~HttpConn() { CloseConn(); };
+    HttpConn();
+
+    ~HttpConn();
 
     void init(int sockFd, const sockaddr_in& addr);
-   // bool read();
+
     bool read();
     bool write();
     void process();
     void CloseConn();
-
+    bool IsClose() const;
     // void InitMySQLResult();
     // void InitResultFile();
-    static bool IsCloseLog() { return isCloseLog; };
+    static bool OpenLog() { return openLog; };
 
     static Epoll* epollPtr;
-    static int userCount;
-    static char* resPath;
-    static bool isCloseLog;
-    static bool isET;
     static SqlConnPool* connPool;
 
+    static int userCount;
+    static char* resPath;
+    static bool openLog;
+    static bool isET;
 
     int GetFd() const;
+    struct sockaddr_in GetAddr() const;
+    const char* GetIP() const;
+    int GetPort() const;
+    time_t GetExpires() const;
+    MYSQL* GetSql() const;
 
-    struct sockaddr_in GetAddr() const {
-        return addr_;
-    }
-
-    const char* GetIP() const {
-        return inet_ntoa(addr_.sin_addr);
-    }
-
-    int GetPort() const {
-        return addr_.sin_port;
-    }
-    time_t GetExpires() const {
-        return expires_;
-    }
-    void SetExpires(time_t expires)  {
-        expires_ = expires;
-    }
-    int GetIndex() const {
-        return index_;
-    }
-    void SetIndex(int idx) {
-        index_ = idx;
-    }
-    int GetFd(int idx) const {
-        return index_;
-    }
-
-    void BindSql(MYSQL * mysql) {
-        mysql_ = mysql;
-    }
-    MYSQL *  GetSql() const {
-        return mysql_;
-    }
+    void SetExpires(time_t expires);
+    void BindSql(MYSQL * mysql);
     
 private:
     static const int PATH_LEN = 200;
-    static const int READ_BUFF_SIZE = 2048;
+    static const int READ_BUFF_SIZE = 5000;
     static const int WRITE_BUFF_SIZE = 1024;
 
     void Init_();
     void Unmap_();
 
     LINE_STATUS ParseLine_();
-    char* GetLine_();
 
-    HTTP_CODE ParseRequestLine_(char *text);
-    HTTP_CODE ParseHeader_(char *text);
-    HTTP_CODE ParseContent_(char *text);
-    HTTP_CODE WriteParseMsg_();
+    HTTP_CODE ParseRequestLine_(std::string line);
+    HTTP_CODE ParseHeader_(std::string line);
+    HTTP_CODE ParseContent_(std::string line);
+    HTTP_CODE DoRequest_();
 
     bool AddResponse_(const char* format,...);
     bool AddStatusLine_(int status, const char* title);
@@ -164,24 +140,22 @@ private:
     HTTP_CODE ParseHttpMsg_();
     bool GenerateHttpMsg_(HTTP_CODE ret);
 
-    time_t expires_;
-    int index_;
     int fd_;
     struct  sockaddr_in addr_;
+    time_t expires_;
+    Request request_;
 
-    char readBuff_[READ_BUFF_SIZE];
+    char* readBuff_;
     size_t readIdx_;
     size_t checkIdx_;
     size_t startLine_;
 
-    char writeBuff_[WRITE_BUFF_SIZE];
+    char* writeBuff_;
     size_t writeIdx_;
 
     CHECK_STATE checkState_;
 
     bool isClose_;
-
-    RequestMsg requestMsg_;
 
     char* fileAddr_;
     int iovCount_;
