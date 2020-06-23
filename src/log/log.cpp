@@ -14,10 +14,10 @@ Log::Log() {
     deque_ = nullptr;
 
     MAX_LINES_ = 0;
-    BUFF_SIZE_ = 0;
+    BUFF_SIZE_ = 128;
     toDay_ = 0;
     fp_ = nullptr;
-    buffer_ = nullptr;
+    buffer_ = new char[BUFF_SIZE_];
 }
 
 Log::~Log() {
@@ -49,29 +49,27 @@ void Log::init(int level = 1, const char* path, const char* suffix, int maxLines
     int maxQueueSize) {
     if(maxQueueSize > 0) {
         isAsync_ = true;
-        deque_ = new BlockDeque<string>(maxQueueSize);
-        writePID_ = new thread(FlushLogThread);
+        if(!deque_) {
+            deque_ = new BlockDeque<string>(maxQueueSize);
+            writePID_ = new thread(FlushLogThread);
+        }
     }
     level_ = level;
-    BUFF_SIZE_ = 128;
-    buffer_ = new char[BUFF_SIZE_];
-    memset(buffer_, '\0', BUFF_SIZE_);
+    memset(buffer_, 0, BUFF_SIZE_);
     MAX_LINES_ = maxLines;
     lineCount_ = 0;
 
     time_t timer = time(nullptr);
     struct tm *sysTime = localtime(&timer);
     struct tm t = *sysTime;
-
     strcpy(path_, path);
     strcpy(suffix_, suffix);
-
     char fileName[LOG_NAME_LEN] = {0};
-
     snprintf(fileName, LOG_NAME_LEN - 1, "%s/%d_%02d_%02d%s", 
             path_, t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, suffix_);
     toDay_ = t.tm_mday;
-
+    
+    if(fp_) { fclose(fp_); }
     fp_ = fopen(fileName, "a");
     if(fp_ == nullptr) {
         mkdir(path_, 0777);

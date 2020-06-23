@@ -17,7 +17,7 @@ void TestLog() {
         }
     }
     cnt = 0;
-    Log::GetInstance()->init(level, "./test/testlog3", ".log", 5000, 200);
+    Log::GetInstance()->init(level, "./test/testlog2", ".log", 5000, 200);
     for(level = 0; level < 4; level++) {
         Log::GetInstance()->setLevel(level);
         for(int j = 0; j < 1000; j++ ){
