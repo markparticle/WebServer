@@ -7,6 +7,9 @@
 #include "sqlconnpool.h"
 using namespace std;
 
+
+bool SqlConnPool::openLog;
+
 SqlConnPool::SqlConnPool() {
     useCount_ = 0;
     freeCount_ = 0;
@@ -19,9 +22,8 @@ SqlConnPool* SqlConnPool::GetInstance() {
 
 void SqlConnPool::Init(string host, string user,
                        string pwd, string dbName, int port,
-                       int connSize, bool isCloseLog) {
+                       int connSize) {
     sqlConfig_ = {host, user, pwd, dbName, port};
-    isCloseLog_ = isCloseLog;
     for (int i = 0; i < connSize; i++)
     {
         MYSQL *sql = nullptr;

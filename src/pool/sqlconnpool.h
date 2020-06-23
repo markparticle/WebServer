@@ -24,14 +24,10 @@ public:
 
     void Init(std::string host, std::string user, 
         std::string pwd, std::string dbName,  int port, 
-        int connSize, bool isCloseLog = false);
+        int connSize);
     
     void ClosePool();
-    bool IsCloseLog() { return isCloseLog_; };
-
-private:
-    SqlConnPool();
-    ~SqlConnPool();
+    static bool OpenLog() { return openLog; };
 
     struct SqlConfig {
         std::string host;
@@ -39,9 +35,15 @@ private:
         std::string pwd;
         std::string dbName;
         int port;
-    } sqlConfig_;
+    };
+    static bool openLog;
 
-    bool isCloseLog_;
+private:
+    SqlConnPool();
+    ~SqlConnPool();
+
+    SqlConfig sqlConfig_;
+
     int MAX_CONN_;
     int useCount_;
     int freeCount_;

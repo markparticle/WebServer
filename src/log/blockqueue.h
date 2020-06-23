@@ -111,25 +111,21 @@ size_t BlockDeque<T>::capacity() {
 
 template<class T>
 void BlockDeque<T>::push_back(const T &item) {
-    {
-        std::unique_lock<std::mutex> locker(mtx_);
-        while(deq_.size() >= capacity_) {
-            condProducer_.wait(locker);
-        }
-        deq_.push_back(item);
+    std::unique_lock<std::mutex> locker(mtx_);
+    while(deq_.size() >= capacity_) {
+        condProducer_.wait(locker);
     }
+    deq_.push_back(item);
     condConsumer_.notify_all();
 }
 
 template<class T>
 void BlockDeque<T>::push_front(const T &item) {
-    {
-        std::unique_lock<std::mutex> locker(mtx_);
-        while(deq_.size() >= capacity_) {
-            condProducer_.wait(locker);
-        }
-        deq_.push_front(item);
+    std::unique_lock<std::mutex> locker(mtx_);
+    while(deq_.size() >= capacity_) {
+        condProducer_.wait(locker);
     }
+    deq_.push_front(item);
     condConsumer_.notify_all();
 }
 
@@ -147,39 +143,34 @@ bool BlockDeque<T>::full(){
 
 template<class T>
 bool BlockDeque<T>::pop(T &item) {
-    {
-        std::unique_lock<std::mutex> locker(mtx_);
-        while(deq_.empty()){
-            condConsumer_.wait(locker);
-            if(isClose_ == true){
-                return false;
-            }
+    std::unique_lock<std::mutex> locker(mtx_);
+    while(deq_.empty()){
+        condConsumer_.wait(locker);
+        if(isClose_ == true){
+            return false;
         }
-        item = deq_.front();
-        deq_.pop_front();
     }
+    item = deq_.front();
+    deq_.pop_front();
     condProducer_.notify_all();
     return true;
 }
 
 template<class T>
 bool BlockDeque<T>::pop(T &item, int timeout) {
-    {   
-        std::unique_lock<std::mutex> locker(mtx_);
-        while(deq_.empty()){
+    std::unique_lock<std::mutex> locker(mtx_);
+    while(deq_.empty()){
         if(condConsumer_.wait_for(locker, std::chrono::seconds(timeout)) 
                 == std::cv_status::timeout){
-            item = nullptr;
-            return false;
+            return true;
         }
         if(isClose_ == true){
             return false;
         }
-        }
-        item = deq_.front();
-        deq_.pop_front();
     }
-    condProducer_.notify_one();
+    item = deq_.front();
+    deq_.pop_front();
+    condProducer_.notify_all();
     return true;
 }
 
