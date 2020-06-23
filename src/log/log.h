@@ -23,14 +23,13 @@ public:
         int maxQueueCapacity = 800);
 
     static Log* GetInstance();
-
     static void FlushLogThread();
 
     void write(int level, const char *format,...);
-
     void flush();
 
-    int getLevel();
+    int getLevel() const;
+    void setLevel(int level);
 
 private:
     Log();
@@ -55,7 +54,6 @@ private:
     int level_;
     
     BlockDeque<std::string> *deque_; 
-
     std::mutex mtx_;
     bool isAsync_;
     std::thread *writePID_;
@@ -71,6 +69,15 @@ private:
         }\
     } while(0);
 
+#define LOG_TEST(level, format, ...) \
+    do {\
+        Log* log = Log::GetInstance();\
+        if (log->getLevel() <= level) {\
+            log->write(level, format, ##__VA_ARGS__); \
+            log->flush();\
+        }\
+    } while(0);
+    
 #define LOG_DEBUG(format, ...) do {LOG_BASE(0, format, ##__VA_ARGS__)} while(0);
 #define LOG_INFO(format, ...) do {LOG_BASE(1, format, ##__VA_ARGS__)} while(0);
 #define LOG_WARN(format, ...) do {LOG_BASE(2, format, ##__VA_ARGS__)} while(0);

@@ -15,7 +15,6 @@ Log::Log() {
 
     MAX_LINES_ = 0;
     BUFF_SIZE_ = 0;
-    lineCount_ = 0;
     toDay_ = 0;
     fp_ = nullptr;
     buffer_ = nullptr;
@@ -33,12 +32,17 @@ Log::~Log() {
         delete deque_;
     }
     if(fp_ != nullptr) {
+        flush();
         fclose(fp_);
     }
 }
 
-int Log::getLevel() {
+int Log::getLevel() const {
     return level_;
+}
+
+void Log::setLevel(int level) {
+    level_ = level;
 }
 
 void Log::init(int level = 1, const char* path, const char* suffix, int maxLines,
@@ -53,6 +57,7 @@ void Log::init(int level = 1, const char* path, const char* suffix, int maxLines
     buffer_ = new char[BUFF_SIZE_];
     memset(buffer_, '\0', BUFF_SIZE_);
     MAX_LINES_ = maxLines;
+    lineCount_ = 0;
 
     time_t timer = time(nullptr);
     struct tm *sysTime = localtime(&timer);
@@ -76,13 +81,14 @@ void Log::init(int level = 1, const char* path, const char* suffix, int maxLines
 }
 
 void Log::write(int level, const char *format, ...) {
+    if(isAsync_) { deque_->flush(); } 
     int fLen = strnlen(format, 1024) + 40;
     while(fLen > BUFF_SIZE_) {
         BUFF_SIZE_ += (BUFF_SIZE_ + 1) / 2;
         delete[] buffer_;
         buffer_ = new char[BUFF_SIZE_];
     }
-
+    
     struct timeval now = {0, 0};
     gettimeofday(&now, nullptr);
     time_t tSec = now.tv_sec;
@@ -108,28 +114,34 @@ void Log::write(int level, const char *format, ...) {
         break;
     }
     {
-        lock_guard<mutex> locker(mtx_);
-        lineCount_++;
-        //如果不是今天日志或者满了
-        if(toDay_ != t.tm_mday || lineCount_ % MAX_LINES_ == 0) {
+        unique_lock<mutex> locker(mtx_);
+        locker.unlock();
+        /* 日志日期 日志行数 */
+        if (toDay_ != t.tm_mday || (lineCount_ && (lineCount_  %  MAX_LINES_ == 0)))
+        {
             char newFile[LOG_NAME_LEN];
-            fflush(fp_);
-            fclose(fp_);
             char tail[16] = {0};
             snprintf(tail, 16, "%d_%02d_%02d", t.tm_year + 1900, t.tm_mon + 1, t.tm_mday);
 
-            if(toDay_ != t.tm_mday) {
+            if (toDay_ != t.tm_mday)
+            {
                 snprintf(newFile, LOG_NAME_LEN - 1, "%s/%s%s", path_, tail, suffix_);
                 toDay_ = t.tm_mday;
                 lineCount_ = 0;
-            } else {
-                snprintf(newFile, LOG_NAME_LEN - 1, "%s/%s-%d%s", 
-                    path_, tail, lineCount_ / MAX_LINES_, suffix_);
             }
+            else {
+                snprintf(newFile, LOG_NAME_LEN - 1, "%s/%s-%d%s",
+                         path_, tail, (lineCount_  / MAX_LINES_), suffix_);
+            }
+            locker.lock();
+            fflush(fp_);
+            fclose(fp_);
             fp_ = fopen(newFile, "a");
             assert(fp_ != nullptr);
         }
+        lineCount_++;
     }
+
     va_list vaList;
     va_start(vaList, format);
 
@@ -164,13 +176,10 @@ void Log::flush(void) {
 }
 
 void Log::AsyncWrite_() {
-    std::string str = "";
+    string str = "";
     while(deque_->pop(str)) {
-        if(str != "") {
-            std::lock_guard<std::mutex> locker(mtx_);
-            fputs(str.c_str(), fp_);
-        }
-        str = "";
+        lock_guard<mutex> locker(mtx_);
+        fputs(str.c_str(), fp_);
     }
 }
 

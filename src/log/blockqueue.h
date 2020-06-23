@@ -43,6 +43,8 @@ public:
 
     bool pop(T &item, int timeout);
 
+    void flush();
+
 private:
     std::deque<T> deq_;
 
@@ -56,6 +58,7 @@ private:
 
     std::condition_variable condProducer_;
 };
+
 
 template<class T>
 BlockDeque<T>::BlockDeque(size_t MaxCapacity) :capacity_(MaxCapacity) {
@@ -76,6 +79,11 @@ void BlockDeque<T>::Close() {
         isClose_ = true;
     }
     condProducer_.notify_all();
+    condConsumer_.notify_all();
+};
+
+template<class T>
+void BlockDeque<T>::flush() {
     condConsumer_.notify_all();
 };
 
@@ -146,7 +154,7 @@ bool BlockDeque<T>::pop(T &item) {
     std::unique_lock<std::mutex> locker(mtx_);
     while(deq_.empty()){
         condConsumer_.wait(locker);
-        if(isClose_ == true){
+        if(isClose_){
             return false;
         }
     }
@@ -162,9 +170,9 @@ bool BlockDeque<T>::pop(T &item, int timeout) {
     while(deq_.empty()){
         if(condConsumer_.wait_for(locker, std::chrono::seconds(timeout)) 
                 == std::cv_status::timeout){
-            return true;
+            return false;
         }
-        if(isClose_ == true){
+        if(isClose_){
             return false;
         }
     }
