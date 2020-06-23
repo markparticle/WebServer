@@ -19,9 +19,15 @@
 
 class WebServer {
 public:
+    static const int MAX_FD = 50;
+    static const int MAX_EVENT_SIZE = 10000;
+    static const time_t TIME_SLOT = 1;
+    static int pipFds_[2];
+    static const int MAX_PATH = 256;
+
     WebServer(int port, int sqlPort, std::string sqlUser,
         std::string sqlPwd, std::string dbName, int connPoolNum, int threadNum,
-        int trigMode, bool isReactor, bool OptLinger ,bool isCloseLog, int logQueSize);
+        int trigMode, bool isReactor, bool OptLinger ,bool openLog, int logLevel, int logQueSize);
 
     ~WebServer();
 
@@ -30,13 +36,13 @@ public:
     void Init();
     void Start();
     void Close();
-    bool IsCloseLog() { return isCloseLog_; }
+    bool OpenLog() { return openLog_; }
 
     enum class ActorMode { PROACTOR = 0, REACTOR };
     struct LogConfig {
+        int level;
         std::string path;
         std::string suffix;
-        int buffSize;
         int maxLines;
         int maxQueueSize;
     };
@@ -47,14 +53,7 @@ public:
         std::string pwd;
         std::string dbName;
         int connNum;
-        bool isCloseLog;
     };
-
-    static const int MAX_FD = 50;
-    static const int MAX_EVENT_SIZE = 10000;
-    static const time_t TIME_SLOT = 3;
-    static int pipFds_[2];
-    static const int MAX_PATH = 256;
 
 private:
     void InitLog_(); 
@@ -84,7 +83,7 @@ private:
     static void sigHandle(int sig) ;
 
     bool isClose_;
-    bool isCloseLog_;
+    bool openLog_;
     int listenFd_;
     int port_;
     char resPath_[MAX_PATH];
