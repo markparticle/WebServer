@@ -60,6 +60,8 @@ public:
         }
         pool_->cond.notify_one();
     }
+
+    bool OpenLog() { return OpenLog_; };
     
 private:
     struct Node {
@@ -72,6 +74,9 @@ private:
         bool isClosed;
         std::queue<Node> tasks;
     };
+
+    static bool OpenLog_;
+
     std::shared_ptr<Pool> pool_;
 };
 
