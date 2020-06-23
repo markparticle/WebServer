@@ -37,13 +37,18 @@ Log::~Log() {
     }
 }
 
-void Log::init(const char* path, const char* suffix, int maxLines,
+int Log::getLevel() {
+    return level_;
+}
+
+void Log::init(int level = 1, const char* path, const char* suffix, int maxLines,
     int maxQueueSize) {
     if(maxQueueSize > 0) {
         isAsync_ = true;
         deque_ = new BlockDeque<string>(maxQueueSize);
         writePID_ = new thread(FlushLogThread);
     }
+    level_ = level;
     BUFF_SIZE_ = 128;
     buffer_ = new char[BUFF_SIZE_];
     memset(buffer_, '\0', BUFF_SIZE_);
@@ -71,7 +76,7 @@ void Log::init(const char* path, const char* suffix, int maxLines,
 }
 
 void Log::write(int level, const char *format, ...) {
-    int fLen = strlen(format) + 40;
+    int fLen = strnlen(format, 1024) + 40;
     while(fLen > BUFF_SIZE_) {
         BUFF_SIZE_ += (BUFF_SIZE_ + 1) / 2;
         delete[] buffer_;
@@ -90,20 +95,19 @@ void Log::write(int level, const char *format, ...) {
         strcpy(str, "[debug]:");
         break;
     case 1:
-        strcpy(str, " [info]:");
+        strcpy(str, "[info] :");
         break;
     case 2:
-        strcpy(str, " [warn]:");
+        strcpy(str, "[warn] :");
         break;
     case 3:
         strcpy(str, "[error]:");
         break;
     default:
-        strcpy(str, " [info]:");
+        strcpy(str, "[info] :");
         break;
     }
     {
-
         lock_guard<mutex> locker(mtx_);
         lineCount_++;
         //如果不是今天日志或者满了
@@ -142,7 +146,7 @@ void Log::write(int level, const char *format, ...) {
         context = buffer_;
     }
 
-    if(isAsync_) {
+    if(isAsync_ || (deque_ && deque_->full())) {
          deque_->push_back(context);
     } 
     else {
@@ -162,10 +166,12 @@ void Log::flush(void) {
 void Log::AsyncWrite_() {
     std::string str = "";
     while(deque_->pop(str)) {
-        std::lock_guard<std::mutex> locker(mtx_);
-        fputs(str.c_str(), fp_);
+        if(str != "") {
+            std::lock_guard<std::mutex> locker(mtx_);
+            fputs(str.c_str(), fp_);
+        }
+        str = "";
     }
-
 }
 
 Log* Log::GetInstance() {
