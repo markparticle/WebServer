@@ -15,18 +15,12 @@
 #include <assert.h> 
 #include "../http/httpconn.h"
 #include "../log/log.h"
+
 class HeapTimer {
 public:
-    HeapTimer() {
-        heap_.resize(0);
-        heap_.reserve(64);
-    }
+    HeapTimer() { heap_.reserve(64); }
 
-    ~HeapTimer() {
-        clear();
-    }
-    
-    void action(HttpConn* node);
+    ~HeapTimer() { clear(); }
     
     bool adjust(HttpConn* node, time_t newExpires);
 
@@ -42,12 +36,18 @@ public:
 
     HttpConn* top() const;
 
-private:
-    void siftup(size_t i);
+    bool OpenLog() { return true; }
 
-    bool siftdown(size_t i, size_t n);
+private:
+    void siftup_(int i);
+
+    bool siftdown_(int i, int n);
+
+    void SwapNode_(int i, int j);
 
     std::vector<HttpConn*> heap_;
+    
+    std::unordered_map<HttpConn*, int> hash_;
 };
 
 #endif //HEAP_TIMER_H
