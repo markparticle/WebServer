@@ -3,6 +3,7 @@
 !*/
 !*.cpp
 !*.h
+!LICENSE
 !makefile
 
 *.log
