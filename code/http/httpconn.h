@@ -25,6 +25,7 @@
 #include <mysql/mysql.h> //mysql
 
 #include <unordered_map>
+#include <unordered_set>
 #include <string>
 #include <regex>
 #include <iostream>
@@ -72,8 +73,6 @@ public:
         std::unordered_map<std::string, std::string> post;
     };
 
-    static std::unordered_map<std::string, int> defaultRes;
-
 public:
     HttpConn();
     ~HttpConn();
@@ -90,6 +89,9 @@ public:
 
     static Epoll* epollPtr;
     static SqlConnPool* connPool;
+
+    static std::unordered_map<std::string, int> htmlMap;
+    static std::unordered_set<std::string> htmlSet;
 
     static int userCount;
     static char* resPath;

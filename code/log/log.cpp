@@ -64,8 +64,8 @@ void Log::init(int level = 1, const char* path, const char* suffix, int maxLines
     time_t timer = time(nullptr);
     struct tm *sysTime = localtime(&timer);
     struct tm t = *sysTime;
-    strcpy(path_, path);
-    strcpy(suffix_, suffix);
+    strncpy(path_, path, strlen(path));
+    strncpy(suffix_, suffix, strlen(suffix));
     char fileName[LOG_NAME_LEN] = {0};
     snprintf(fileName, LOG_NAME_LEN - 1, "%s/%04d_%02d_%02d%s", 
             path_, t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, suffix_);
