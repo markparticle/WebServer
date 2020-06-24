@@ -25,10 +25,10 @@ WebServer::WebServer(int port, int sqlPort, const char* sqlUser,
     threadNum_ = threadNum;
     trigMode_ = trigMode;
     
-    memcpy(sqlConfig_.user, sqlUser, strlen(sqlUser));
-    memcpy(sqlConfig_.pwd, sqlPwd, strlen(sqlPwd));
-    memcpy(sqlConfig_.dbName, dbName, strlen(dbName));
-    memcpy(sqlConfig_.host, "localhost", 10);
+    strcpy(sqlConfig_.user, sqlUser);
+    strcpy(sqlConfig_.pwd, sqlPwd);
+    strcpy(sqlConfig_.dbName, dbName);
+    strcpy(sqlConfig_.host, "localhost");
     sqlConfig_.port = 3306;
     sqlConfig_.connNum = connPoolNum;
 

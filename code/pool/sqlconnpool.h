@@ -30,10 +30,10 @@ public:
     static bool OpenLog() { return openLog; };
 
     struct SqlConfig {
-        char host[24];
-        char user[48];
-        char pwd[48];
-        char dbName[48];
+        char host[128];
+        char user[128];
+        char pwd[128];
+        char dbName[128];
         int port;
     };
     static bool openLog;

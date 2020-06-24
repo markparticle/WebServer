@@ -23,10 +23,10 @@ SqlConnPool* SqlConnPool::GetInstance() {
 void SqlConnPool::Init(char* host, char* user,
                        char* pwd, char* dbName, int port,
                        int connSize) {
-    memcpy(sqlConfig_.host, host, strlen(host));
-    memcpy(sqlConfig_.user, host, strlen(user));
-    memcpy(sqlConfig_.pwd, host, strlen(pwd));
-    memcpy(sqlConfig_.dbName, host, strlen(dbName));
+    strcpy(sqlConfig_.host, host);
+    strcpy(sqlConfig_.user, user);
+    strcpy(sqlConfig_.pwd, pwd);
+    strcpy(sqlConfig_.dbName, dbName);
     sqlConfig_.port = port;
     for (int i = 0; i < connSize; i++)
     {
@@ -34,14 +34,14 @@ void SqlConnPool::Init(char* host, char* user,
         sql = mysql_init(sql);
         if (!sql) {
             LOG_ERROR("MySql init error!");
-            exit(1);
+            exit(-1);
         }
         sql = mysql_real_connect(sql, sqlConfig_.host,
                                  sqlConfig_.user, sqlConfig_.pwd,
                                  sqlConfig_.dbName, sqlConfig_.port, nullptr, 0);
         if (!sql) {
             LOG_ERROR("MySql Connect error!");
-            exit(1);
+            exit(-1);
         }
         connQue_.push(sql);
     }

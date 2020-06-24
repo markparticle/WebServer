@@ -24,9 +24,13 @@ char* HttpConn::resPath;
 int HttpConn::userCount;
 bool HttpConn::openLog;
 bool HttpConn::isET;
-unordered_map<string, int> HttpConn::defaultRes {
+unordered_map<string, int> HttpConn::htmlMap {
             {"/index.html", 0}, {"/register.html", 1}, {"/login.html", 2},  {"/welcome.html", 3},
-            {"/video.html", 4}, {"/picture.html", 5}, {"/file.html", 6},};
+            {"/video.html", 4}, {"/picture.html", 5}, {"/file.html", 6} };
+unordered_set<string> HttpConn::htmlSet{
+            "/index", "/register", "/login",
+             "/welcome", "/video", "/picture",
+             "/file"};
 
 HttpConn::HttpConn() { 
     readBuff_ = new char[READ_BUFF_SIZE];
@@ -203,8 +207,17 @@ void HttpConn::GetRequestLine_() {
             if(readBuff_[checkIdx_ + 1 ] == '\n') {
                 readBuff_[checkIdx_++] = '\0';
                 readBuff_[checkIdx_++] = '\0';
+                break;
             }
         }
+        // else if(ch == '\n') {
+        //      if(checkIdx_ > 1 && readBuff_[checkIdx_ - 1] == '\r') {
+        //         LOG_DEBUG("down!")
+        //         readBuff_[checkIdx_ - 1] = '\0';
+        //         readBuff_[checkIdx_++] = '\0';
+        //         break;
+        //     }
+        // }
     }
 }
 
@@ -276,8 +289,6 @@ HttpConn::HTTP_CODE HttpConn::ParseRequest_()
     return NO_REQUEST;
 }
 
-
-
 bool HttpConn::UserVerify(const string &name, const string &pwd, bool isLogin) {
     LOG_TEST(1, "Verify name:%s pwd:%s", name.c_str(), pwd.c_str());
     MYSQL* sql = connPool->GetConn();
@@ -292,7 +303,10 @@ bool HttpConn::UserVerify(const string &name, const string &pwd, bool isLogin) {
     sprintf(order, "SELECT username, password FROM user WHERE username='%s' LIMIT 1", name.c_str());
     LOG_TEST(1, "%s", order);
 
-    if(mysql_query(sql, order)) { return false; }
+    if(mysql_query(sql, order)) { 
+        mysql_free_result(res);
+        return false; 
+    }
     res = mysql_store_result(sql);
     j = mysql_num_fields(res);
     fields = mysql_fetch_fields(res);
@@ -322,11 +336,12 @@ bool HttpConn::UserVerify(const string &name, const string &pwd, bool isLogin) {
         LOG_TEST(1, "%s", order);
         if(mysql_query(sql, order)) { 
             LOG_TEST(1, "Insert error!");
-            return false; 
+            flag = false; 
         }
-        return true;
+        flag = true;
     }
     connPool->FreeConn(sql);
+    LOG_TEST(0, "UserVerify success!!");
     return flag;
 }
 
@@ -340,6 +355,7 @@ void HttpConn::ParseFromUrlencoded_() {
     if(request_.header["Content-Type"] == "application/x-www-form-urlencoded") {
         int n = request_.body.size();
         string key, value;
+        int num = 0;
         for(int i = 0, j = 0; i <= n; i++) {
             char ch = request_.body[i];
             switch (ch) {
@@ -351,8 +367,9 @@ void HttpConn::ParseFromUrlencoded_() {
                 request_.body[i] = ' ';
                 break;
             case '%':
-                converHex(request_.body[i + 1]);
-                request_.body[i + 2];
+                num = converHex(request_.body[i + 1]) * 16 + converHex(request_.body[i + 2]);
+                request_.body[i + 2] = num % 10 + '0';
+                request_.body[i + 1] = num / 10 + '0';
                 i += 2;
                 break;
             case '&':
@@ -389,39 +406,44 @@ void StrToLow(string& str) {
 }
 
 HttpConn::HTTP_CODE HttpConn::DoRequest_() {
-    char filePath[256], path[128];
+    char filePath[256];
+    strcpy(filePath, resPath);
     StrToLow(request_.path);
-    if(strlen(path) == 1 &&  path[0] == '/') {
-        strcat(path, "index.html"); 
+    LOG_DEBUG("%s %d", request_.path.c_str() ,htmlSet.size());
+    if(request_.path == "/") {
+        request_.path = "/index.html"; 
     } else {
-        for(auto &item: defaultRes) {
-            if(item.first == request_.path) {
-                strcat(path, ".html"); 
-                LOG_DEBUG("path:[%s]", path);
+        for(auto &item: htmlSet) {
+            if(item == request_.path) {
+                request_.path += ".html";
                 break;
             }
         }
     }
 
     if(request_.method == "POST") {
-        if(defaultRes[request_.path] == 1 || defaultRes[request_.path] == 2) {
+        if(htmlMap[request_.path] == 1 || htmlMap[request_.path] == 2) {
             ParseFromUrlencoded_();
             const string& name = request_.post["username"];
             const string& pwd = request_.post["password"];
-            LOG_DEBUG("FROm: user:%s pwd:%s", name.c_str(), pwd.c_str());
+            LOG_DEBUG("Form: user:%s pwd:%s", name.c_str(), pwd.c_str());
             if(!name.empty() && !pwd.empty()) {
-                bool isLogin = (defaultRes[request_.path] == 2);
+                bool isLogin = (htmlMap[request_.path] == 2);
                 if(UserVerify(name, pwd, isLogin)) {
-                    request_.path = "welcome.html";
+                    request_.path = "/welcome.html";
+                     LOG_ERROR("TO welcome");
                 } 
                 else if(isLogin){
+                    request_.path = "/logError.html";
+                    
                     LOG_ERROR("username:%s, password error", name.c_str());
                 } else {
+                    request_.path = "/registerError.html";
                     LOG_ERROR("username:%s is used", name.c_str());
                 }
             }
             else {
-                LOG_ERROR("Parse content:%s, error", request_.body);
+                LOG_ERROR("Parse content:%s, error", request_.body.c_str());
             }
         }
     }
@@ -556,7 +578,6 @@ void HttpConn::process() {
     if(read()) {
         /* 读取成功，解析请求头 */
         auto ret = ParseRequest_();
-        LOG_DEBUG("parse client[%d] ret %d", fd_, ret);
         if(ret == NO_REQUEST) {
             LOG_DEBUG("Generated client[%d] request read!", fd_);
             epollPtr->Modify(fd_, EPOLLIN, isET);
