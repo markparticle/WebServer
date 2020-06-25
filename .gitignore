@@ -6,6 +6,8 @@
 !LICENSE
 !makefile
 
+*.o
+*.1
 *.log
 *.exe
 /.vscode
