@@ -69,9 +69,8 @@ private:
     void DealRead_(int fd);
 
     void SendError_(int fd, const char*info);
-    bool ExtentTime_(HttpConn* client);
 
-
+    void ExtentTime_(HttpConn* client);
     static void ReadCallback(HttpConn* client);
     static void WriteCallback(HttpConn* client);
     static void SetSignal(int sig, void(handler)(int), bool restart = true);

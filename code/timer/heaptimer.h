@@ -22,7 +22,7 @@ public:
 
     ~HeapTimer() { clear(); }
     
-    bool adjust(HttpConn* node, time_t newExpires);
+    void adjust(HttpConn* node, time_t newExpires);
 
     void add(HttpConn* node, time_t timeSlot);
 

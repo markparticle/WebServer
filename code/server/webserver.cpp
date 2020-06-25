@@ -300,14 +300,14 @@ void WebServer::DealListen_() {
     }
 }
 
-bool WebServer::ExtentTime_(HttpConn* client) {
+void WebServer::ExtentTime_(HttpConn* client) {
     LOG_INFO("Extent client[%d] time", client->GetFd());
-    return timer_->adjust(client, time(nullptr) + 3 * TIME_SLOT);
+    timer_->adjust(client, time(nullptr) + 3 * TIME_SLOT);
 }
 
 void WebServer::DealRead_(int fd) {
+    ExtentTime_(&users_[fd]);
     if(isReactor_) {
-        threadpool_->addTask(ExtentTime_, &users_[fd]);
         threadpool_->addTask(ReadCallback, &users_[fd]);
     } else {
         ExtentTime_(&users_[fd]);
@@ -318,7 +318,6 @@ void WebServer::DealRead_(int fd) {
 void WebServer::DealWrite_(int fd) {
     ExtentTime_(&users_[fd]);
     if(isReactor_) {
-        threadpool_->addTask(ExtentTime_, &users_[fd]);
         threadpool_->addTask(WriteCallback, &users_[fd]);
     } else {
         users_[fd].write();

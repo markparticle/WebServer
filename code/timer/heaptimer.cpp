@@ -72,11 +72,10 @@ void HeapTimer::del(HttpConn* node) {
     hash_.erase(node);
 }
 
-bool HeapTimer::adjust(HttpConn* node, time_t newExpires) {
+void HeapTimer::adjust(HttpConn* node, time_t newExpires) {
     assert(hash_.count(node) > 0);
     node->SetExpires(newExpires);
     siftdown_(hash_[node], heap_.size());
-    return true;
 }
 
 void HeapTimer::tick() {
