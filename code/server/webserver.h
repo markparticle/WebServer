@@ -19,27 +19,23 @@
 
 class WebServer {
 public:
-    static const int MAX_FD = 50;
-    static const int MAX_EVENT_SIZE = 10000;
-    static const time_t TIME_SLOT = 1;
-    static int pipFds_[2];
-    static const int MAX_PATH = 256;
-
     WebServer(int port, int sqlPort, const char* sqlUser,
         const char* sqlPwd, const char* dbName, int connPoolNum, int threadNum,
         int trigMode, bool isReactor, bool OptLinger ,bool openLog, int logLevel, int logQueSize);
 
     ~WebServer();
 
-    typedef std::function<void()> CallbackFunc;
-
     void Init();
     void Start();
     void Close();
     bool OpenLog() { return openLog_; }
 
-    enum class ActorMode { PROACTOR = 0, REACTOR };
-    
+    static const int MAX_FD = 65536;
+    static const int MAX_EVENT_SIZE = 10000;
+    static const time_t TIME_SLOT = 5;
+    static int pipFds_[2];
+    static const int MAX_PATH = 256;
+
     struct LogConfig {
         int level;
         char path[128];
@@ -77,18 +73,16 @@ private:
 
 
     static void ReadCallback(HttpConn* client);
-
     static void WriteCallback(HttpConn* client);
-
-    static void SetSignal(int sig, void(handler)(int), bool enableRestart = true);
+    static void SetSignal(int sig, void(handler)(int), bool restart = true);
     static void sigHandle(int sig) ;
 
+    /* server config */
     bool isClose_;
     bool openLog_;
-    int listenFd_;
+
     int port_;
     char* resPath_;
-    int threadNum_;
 
     int trigMode_;
     bool isReactor_;
@@ -96,21 +90,18 @@ private:
     bool isEtListen_;
     bool isEtConn_;
 
+    LogConfig logConfig_;
+    SqlConfig sqlConfig_;
+    int threadNum_;
+
+    int listenFd_;
     struct sockaddr_in serverAddr_;
 
     Epoll* epoll_;
-
-    LogConfig logConfig_;
-
-    SqlConfig sqlConfig_;
-
     SqlConnPool* connPool_;
-
     ThreadPool* threadpool_;
-
     HeapTimer* timer_;
-
-    std::unordered_map<int, HttpConn*> users_;
+    HttpConn* users_;
 };
 
 

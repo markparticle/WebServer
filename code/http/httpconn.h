@@ -81,7 +81,7 @@ public:
 
     bool read();
     bool write();
-    void process();
+    void ProcessRead();
     void CloseConn();
     bool IsClose() const;
 

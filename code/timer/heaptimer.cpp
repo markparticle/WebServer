@@ -18,7 +18,7 @@ void HeapTimer::siftup_(int i) {
 void HeapTimer::SwapNode_(int i, int j) {
     std::swap(heap_[i], heap_[j]);
     hash_[heap_[i]] = i;
-    hash_[heap_[j]] = j;
+    hash_[heap_[j]] = j;/*  */
 } 
 
 bool HeapTimer::siftdown_(int x, int n) {

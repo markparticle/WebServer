@@ -18,6 +18,7 @@ Epoll::~Epoll() {
 }
 
 int Epoll::Wait() {
+    assert(epollFd_ > 0);
     return epoll_wait(epollFd_, ev_, eventSize_, timeout_);
 }
 
@@ -67,6 +68,7 @@ void Epoll::Modify(int fd, uint32_t mode, bool enableET, bool enableOneShot) {
 }
 
 int Epoll::SetNonblock(int fd) {
+    assert(fd > 0);
     return fcntl(fd, F_SETFL, fcntl(fd, F_GETFD, 0) | O_NONBLOCK);
 }
 
