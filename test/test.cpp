@@ -7,7 +7,7 @@
 
 void TestLog() {
     int cnt = 0, level = 0;
-    Log::Instance()->init(level, "./test/testlog1", ".log", 0);
+    Log::Instance()->init(level, "./log//testlog1", ".log", 0);
     for(level = 3; level >= 0; level--) {
         Log::Instance()->SetLevel(level);
         for(int j = 0; j < 100000; j++ ){
@@ -17,7 +17,7 @@ void TestLog() {
         }
     }
     cnt = 0;
-    Log::Instance()->init(level, "./test/testlog2", ".log", 5000);
+    Log::Instance()->init(level, "./log/testlog2", ".log", 5000);
     for(level = 0; level < 4; level++) {
         Log::Instance()->SetLevel(level);
         for(int j = 0; j < 100000; j++ ){

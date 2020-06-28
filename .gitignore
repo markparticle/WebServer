@@ -5,11 +5,10 @@
 !*.h
 !LICENSE
 !makefile
+!Makefile
 
 *.o
 *.1
 *.log
 *.exe
 /.vscode
-/source.cpp
-/source.h
