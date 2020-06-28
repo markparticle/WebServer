@@ -7,28 +7,27 @@
 ## 目录树
 ```
 .
-├── code
-│   ├── buffer
+├── code           源代码
+│   ├── buffer
 │   ├── config
 │   ├── http
 │   ├── log
 │   ├── timer
 │   ├── pool
 │   ├── server
-│   ├── main.cpp
-│   └── readme.md
-├── test
-│   ├── Makefile
+│   └── main.cpp
+├── test           单元测试
+│   ├── Makefile
 │   └── test.cpp
-├── resources
-│   └── html
-├── bin
-│   └── server
-├── build
-│   └── Makefile
-├── log
-│   └── xxx.log
-├── webbench-1.5
+├── resources      静态资源
+│   └── html
+├── bin            可执行文件
+│   └── server
+├── build          编译
+│   └── Makefile
+├── log            日志目录
+│   └── xxx.log
+├── webbench-1.5   压力测试
 ├── Makefile
 ├── LICENSE
 └── readme.md
