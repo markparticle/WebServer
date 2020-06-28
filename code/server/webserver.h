@@ -71,8 +71,8 @@ private:
     uint32_t connEvent_;
    
     std::unique_ptr<HeapTimer> timer_;
-    std::shared_ptr<ThreadPool> threadpool_;
-    std::shared_ptr<Epoller> epoller_;
+    std::unique_ptr<ThreadPool> threadpool_;
+    std::unique_ptr<Epoller> epoller_;
     std::unordered_map<int, HttpConn> users_;
 
 };
