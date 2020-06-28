@@ -52,13 +52,14 @@ make
 
 ## 单元测试
 ```bash
+cd test
 make
-./bin/server
+./test
 ```
 
 ## 压力测试
 ```bash
-cd ./webbench-1.5/webbench -c 10000 -t 10 http://ip:port/
+./webbench-1.5/webbench -c 10000 -t 10 http://ip:port/
 ```
 * 测试环境: Ubuntu:19.10 cpu:i5-8400 内存:8G 
 * QPS 9000~10000
