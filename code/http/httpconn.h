@@ -60,10 +60,6 @@ public:
     static std::atomic<int> userCount;
     
 private:
-    static const int PATH_LEN = 200;
-    static const int READ_BUFF_SIZE = 5000;
-    static const int WRITE_BUFF_SIZE = 1024;
-
     int fd_;
     struct  sockaddr_in addr_;
 

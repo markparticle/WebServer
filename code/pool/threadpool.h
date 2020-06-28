@@ -57,7 +57,6 @@ public:
         pool_->cond.notify_all();
     }
 
-
 private:
     struct Pool {
         std::mutex mtx;
