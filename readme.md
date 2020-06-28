@@ -61,12 +61,13 @@ make
 ```bash
 cd ./webbench-1.5/webbench -c 10000 -t 10 http://ip:port/
 ```
-
+* 测试环境: Ubuntu:19.10 cpu:i5-8400 内存:8G 
+* QPS 9000~10000
 
 ## TODO
 * HTTP请求体数据解析 Json/form-data
 * Config(Json格式)
-* 完善单元测试
+* 单元测试
 * 循环缓冲区
 * HTTPS加密(Cryto++库)
 * 文件压缩
