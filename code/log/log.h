@@ -19,18 +19,20 @@
 class Log 
 {
 public:
-    void init(int level, const char* path = "./log", const char* suffix =".log", int maxLines = 5000000,
+    void init(int level, const char* path = "./log", const char* suffix =".log",
         int maxQueueCapacity = 800);
 
-    static Log* GetInstance();
+    static Log* Instance();
     static void FlushLogThread();
 
     void write(int level, const char *format,...);
     void flush();
 
-    int getLevel() const;
-    void setLevel(int level);
-
+    int GetLevel() const;
+    void SetLevel(int level);
+    bool IsOpen() {
+        return isOpen_;
+    }
 private:
     Log();
     virtual ~Log();
@@ -39,9 +41,10 @@ private:
 private:
     static const int LOG_PATH_LEN = 128;
     static const int LOG_NAME_LEN = 256;
-    
-    char path_[LOG_PATH_LEN];
-    char suffix_[LOG_NAME_LEN];
+    static const int MAX_LINES = 50000;
+
+    const char* path_;
+    const char* suffix_;
 
     int MAX_LINES_;
     int BUFF_SIZE_;
@@ -49,39 +52,31 @@ private:
     int lineCount_;
     int toDay_;
 
-    FILE* fp_;
+    bool isOpen_;
+ 
     char* buffer_;
     int level_;
-    
-    BlockDeque<std::string> *deque_; 
-    std::mutex mtx_;
     bool isAsync_;
-    std::thread *writePID_;
-};
 
+    FILE* fp_;
+    std::unique_ptr<BlockDeque<std::string>> deque_; 
+    std::unique_ptr<std::thread> writeThread_;
+    std::mutex mtx_;
+};
 
 #define LOG_BASE(level, format, ...) \
     do {\
-        Log* log = Log::GetInstance();\
-        if (1 == this->OpenLog() && log->getLevel() <= level) {\
+        Log* log = Log::Instance();\
+        if (log->IsOpen() && log->GetLevel() <= level) {\
             log->write(level, format, ##__VA_ARGS__); \
             log->flush();\
         }\
     } while(0);
 
-#define LOG_TEST(level, format, ...) \
-    do {\
-        Log* log = Log::GetInstance();\
-        if (log->getLevel() <= level) {\
-            log->write(level, format, ##__VA_ARGS__); \
-            log->flush();\
-        }\
-    } while(0);
-    
+
 #define LOG_DEBUG(format, ...) do {LOG_BASE(0, format, ##__VA_ARGS__)} while(0);
 #define LOG_INFO(format, ...) do {LOG_BASE(1, format, ##__VA_ARGS__)} while(0);
 #define LOG_WARN(format, ...) do {LOG_BASE(2, format, ##__VA_ARGS__)} while(0);
 #define LOG_ERROR(format, ...) do {LOG_BASE(3, format, ##__VA_ARGS__)} while(0);
-
 
 #endif //LOG_H

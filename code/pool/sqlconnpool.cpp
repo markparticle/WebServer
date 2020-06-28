@@ -7,41 +7,31 @@
 #include "sqlconnpool.h"
 using namespace std;
 
-
-bool SqlConnPool::openLog;
-
 SqlConnPool::SqlConnPool() {
     useCount_ = 0;
     freeCount_ = 0;
 }
 
-SqlConnPool* SqlConnPool::GetInstance() {
+SqlConnPool* SqlConnPool::Instance() {
     static SqlConnPool connPool;
     return &connPool;
 }
+ void SqlConnPool::Init(const char* host, int port,
+            const char* user,const char* pwd, const char* dbName,
+            int connSize) {
 
-void SqlConnPool::Init(char* host, char* user,
-                       char* pwd, char* dbName, int port,
-                       int connSize) {
-    strcpy(sqlConfig_.host, host);
-    strcpy(sqlConfig_.user, user);
-    strcpy(sqlConfig_.pwd, pwd);
-    strcpy(sqlConfig_.dbName, dbName);
-    sqlConfig_.port = port;
     for (int i = 0; i < connSize; i++)
     {
         MYSQL *sql = nullptr;
         sql = mysql_init(sql);
         if (!sql) {
             LOG_ERROR("MySql init error!");
-            exit(-1);
         }
-        sql = mysql_real_connect(sql, sqlConfig_.host,
-                                 sqlConfig_.user, sqlConfig_.pwd,
-                                 sqlConfig_.dbName, sqlConfig_.port, nullptr, 0);
+        sql = mysql_real_connect(sql, host,
+                                 user, pwd,
+                                 dbName, port, nullptr, 0);
         if (!sql) {
             LOG_ERROR("MySql Connect error!");
-            exit(-1);
         }
         connQue_.push(sql);
     }
@@ -65,31 +55,25 @@ MYSQL* SqlConnPool::GetConn() {
 }
 
 void SqlConnPool::FreeConn(MYSQL* sql) {
-    if(sql) 
-    {
-        lock_guard<mutex> locker(mtx_);
-        connQue_.push(sql);
-        sem_post(&semId_);
-    }
+    assert(sql);
+    lock_guard<mutex> locker(mtx_);
+    connQue_.push(sql);
+    sem_post(&semId_);
 }
 
 void SqlConnPool::ClosePool() {
-    {
-        lock_guard<mutex> locker(mtx_);
-        while(!connQue_.empty()) {
-            auto item = connQue_.front();
-            connQue_.pop();
-            mysql_close(item);
-        }
-        mysql_library_end();        
+    lock_guard<mutex> locker(mtx_);
+    while(!connQue_.empty()) {
+        auto item = connQue_.front();
+        connQue_.pop();
+        mysql_close(item);
     }
+    mysql_library_end();        
 }
 
 int SqlConnPool::GetFreeConnCount() {
-    {
-        lock_guard<mutex> locker(mtx_);
-        return connQue_.size();
-    }
+    lock_guard<mutex> locker(mtx_);
+    return connQue_.size();
 }
 
 SqlConnPool::~SqlConnPool() {

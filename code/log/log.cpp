@@ -10,10 +10,9 @@ using namespace std;
 Log::Log() {
     lineCount_ = 0;
     isAsync_ = false;
-    writePID_ = nullptr;
+    writeThread_ = nullptr;
     deque_ = nullptr;
 
-    MAX_LINES_ = 0;
     BUFF_SIZE_ = 128;
     toDay_ = 0;
     fp_ = nullptr;
@@ -21,16 +20,12 @@ Log::Log() {
 }
 
 Log::~Log() {
-    if(writePID_ && writePID_->joinable()) {
+    if(writeThread_ && writeThread_->joinable()) {
         while(!deque_->empty()) {
             deque_->flush();
         };
         deque_->Close();
-        writePID_->join();
-        delete writePID_;
-    }
-    if(deque_ != nullptr) {
-        delete deque_;
+        writeThread_->join();
     }
     if(fp_ != nullptr) {
         flush();
@@ -39,33 +34,35 @@ Log::~Log() {
     delete[] buffer_;
 }
 
-int Log::getLevel() const {
+int Log::GetLevel() const {
     return level_;
 }
 
-void Log::setLevel(int level) {
+void Log::SetLevel(int level) {
     level_ = level;
 }
 
-void Log::init(int level = 1, const char* path, const char* suffix, int maxLines,
+void Log::init(int level = 1, const char* path, const char* suffix,
     int maxQueueSize) {
+    isOpen_ = true;
     if(maxQueueSize > 0) {
         isAsync_ = true;
         if(!deque_) {
-            deque_ = new BlockDeque<string>(maxQueueSize);
-            writePID_ = new thread(FlushLogThread);
+            unique_ptr<BlockDeque<std::string>> newDeque(new BlockDeque<std::string>);
+            deque_ = move(newDeque);
+            std::unique_ptr<std::thread> NewThread(new thread(FlushLogThread));
+            writeThread_ = move(NewThread);
         }
     }
     level_ = level;
     memset(buffer_, 0, BUFF_SIZE_);
-    MAX_LINES_ = maxLines;
     lineCount_ = 0;
 
     time_t timer = time(nullptr);
     struct tm *sysTime = localtime(&timer);
     struct tm t = *sysTime;
-    strncpy(path_, path, strlen(path));
-    strncpy(suffix_, suffix, strlen(suffix));
+    path_ = path;
+    suffix_ = suffix;
     char fileName[LOG_NAME_LEN] = {0};
     snprintf(fileName, LOG_NAME_LEN - 1, "%s/%04d_%02d_%02d%s", 
             path_, t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, suffix_);
@@ -117,7 +114,7 @@ void Log::write(int level, const char *format, ...) {
         unique_lock<mutex> locker(mtx_);
         locker.unlock();
         /* 日志日期 日志行数 */
-        if (toDay_ != t.tm_mday || (lineCount_ && (lineCount_  %  MAX_LINES_ == 0)))
+        if (toDay_ != t.tm_mday || (lineCount_ && (lineCount_  %  MAX_LINES == 0)))
         {
             char newFile[LOG_NAME_LEN];
             char tail[16] = {0};
@@ -131,8 +128,13 @@ void Log::write(int level, const char *format, ...) {
             }
             else {
                 snprintf(newFile, LOG_NAME_LEN - 1, "%s/%s-%d%s",
-                         path_, tail, (lineCount_  / MAX_LINES_), suffix_);
+                         path_, tail, (lineCount_  / MAX_LINES), suffix_);
             }
+            // if(isAsync_) { 
+            //     while (!deque_->empty()){
+            //         deque_->flush(); 
+            //     }
+            // } 
             locker.lock();
             fflush(fp_);
             fclose(fp_);
@@ -146,17 +148,15 @@ void Log::write(int level, const char *format, ...) {
     va_start(vaList, format);
 
     string context = "";
-    {
-        lock_guard<mutex> locker(mtx_);
-        memset(buffer_, 0, BUFF_SIZE_);
-        int n = snprintf(buffer_, 48, "%d-%02d-%02d %02d:%02d:%02d.%06ld %s ",
-            t.tm_year + 1900, t.tm_mon + 1, t.tm_mday,
-            t.tm_hour, t.tm_min, t.tm_sec, now.tv_usec, str);
-        int m = vsnprintf(buffer_ + n, BUFF_SIZE_ - 1, format, vaList);
-        buffer_[n + m] = '\n';
-        buffer_[n + m + 1] = '\0';
-        context = buffer_;
-    }
+    memset(buffer_, 0, BUFF_SIZE_);
+    int n = snprintf(buffer_, 48, "%d-%02d-%02d %02d:%02d:%02d.%06ld %s ",
+        t.tm_year + 1900, t.tm_mon + 1, t.tm_mday,
+        t.tm_hour, t.tm_min, t.tm_sec, now.tv_usec, str);
+    int m = vsnprintf(buffer_ + n, BUFF_SIZE_ - 1, format, vaList);
+    buffer_[n + m] = '\n';
+    buffer_[n + m + 1] = '\0';
+    context = buffer_;
+    
 
     if(isAsync_ || (deque_ && deque_->full())) {
          deque_->push_back(context);
@@ -183,11 +183,11 @@ void Log::AsyncWrite_() {
     }
 }
 
-Log* Log::GetInstance() {
+Log* Log::Instance() {
     static Log inst;
     return &inst;
 }
 
 void Log::FlushLogThread() {
-    Log::GetInstance()->AsyncWrite_();
+    Log::Instance()->AsyncWrite_();
 }
