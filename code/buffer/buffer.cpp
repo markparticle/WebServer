@@ -14,7 +14,7 @@ size_t Buffer::WritableBytes() const {
     return buffer_.size() - writePos_;
 }
 
-size_t Buffer::prependableBytes() const {
+size_t Buffer::PrependableBytes() const {
     return readPos_;
 }
 
@@ -112,7 +112,8 @@ ssize_t Buffer::WriteFd(int fd, int* saveErrno) {
     ssize_t len = write(fd, Peek(), readSize);
     if(len < 0) {
         *saveErrno = errno;
-    }
+        return len;
+    } 
     readPos_ += len;
     return len;
 }
@@ -126,8 +127,8 @@ const char* Buffer::BeginPtr_() const {
 }
 
 void Buffer::MakeSpace_(size_t len) {
-    if(WritableBytes() + prependableBytes() < len) {
-        buffer_.resize(writePos_ + len);
+    if(WritableBytes() + PrependableBytes() < len) {
+        buffer_.resize(writePos_ + len + 1);
     } 
     else {
         size_t readable = ReadableBytes();

@@ -73,7 +73,7 @@ ssize_t HttpConn::read(int* saveErrno) {
 }
 
 ssize_t HttpConn::write(int* saveErrno) {
-    ssize_t len = -1;
+    size_t len = -1;
     do {
         len = writev(fd_, iov_, iovCnt_);
         LOG_DEBUG("write len: %d", len);
@@ -87,7 +87,7 @@ ssize_t HttpConn::write(int* saveErrno) {
         }
  
         if(len > iov_[0].iov_len && iovCnt_ == 2) {
-            iov_[1].iov_base = iov_[1].iov_base + len - iov_[0].iov_len;
+            iov_[1].iov_base = iov_[1].iov_base + (len - iov_[0].iov_len);
             iov_[1].iov_len -= (len - iov_[0].iov_len);
 
             writeBuff_.RetrieveAll();
@@ -99,7 +99,7 @@ ssize_t HttpConn::write(int* saveErrno) {
             writeBuff_.Retrieve(len);
         }
         /* 发送完毕 */
-        if(iov_[0].iov_base + iov_[1].iov_len == 0) {
+        if(iov_[0].iov_len + iov_[1].iov_len == 0) {
             response_.UnmapFile();
             break;
         }
@@ -110,7 +110,6 @@ ssize_t HttpConn::write(int* saveErrno) {
 void HttpConn::process() {
     request_.Init();
     if(request_.parse(readBuff_)) {
-
         response_.Init(srcDir, request_.path(), request_.IsKeepAlive());
     } else {
         response_.Init(srcDir, request_.path(), false, 400);

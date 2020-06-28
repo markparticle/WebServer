@@ -22,7 +22,7 @@ public:
 
     size_t WritableBytes() const;       
     size_t ReadableBytes() const ;
-    size_t prependableBytes() const;
+    size_t PrependableBytes() const;
 
     const char* Peek() const;
     char* Peek();
@@ -47,8 +47,8 @@ public:
     ssize_t WriteFd(int fd, int* Errno);
 
 private:
-    const size_t MAX_BUFF_SIZE = 65536;
-    const size_t INIT_BUFF_SIZE = 1024;
+    const size_t MAX_BUFF_SIZE = 65535;
+    const size_t INIT_BUFF_SIZE = 512;
 
     char* BeginPtr_();
     const char* BeginPtr_() const;

@@ -27,9 +27,9 @@ public:
 
     int Wait(int timeoutMs = -1);
 
-    int GetEventFd(int i) const;
+    int GetEventFd(size_t i) const;
 
-    uint32_t GetEvents(int i) const;
+    uint32_t GetEvents(size_t i) const;
         
 private:
     int epollFd_;

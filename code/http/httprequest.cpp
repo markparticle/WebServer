@@ -16,6 +16,9 @@ const unordered_map<string, int> HttpRequest::DEFAULT_HTML_TAG {
 
 bool HttpRequest::parse(Buffer& buff) {
     const char* CRLF = "\r\n";
+    if(buff.ReadableBytes() <= 0) {
+        return false;
+    }
     while(buff.ReadableBytes() && state_ != FINISH) {
         char* lineEnd = search(buff.Peek(), buff.BeginWrite(), CRLF, CRLF + 2);
         std::string line(buff.Peek(), lineEnd);
@@ -100,7 +103,6 @@ int HttpRequest::ConverHex(char ch) {
 }
 
 void HttpRequest::ParsePost_() {
-
     if(method_ == "POST" && header_["Content-Type"] == "application/x-www-form-urlencoded") {
         ParseFromUrlencoded_();
         if(DEFAULT_HTML_TAG.count(path_)) {
@@ -122,10 +124,14 @@ void HttpRequest::ParsePost_() {
 }
 
 void HttpRequest::ParseFromUrlencoded_() {
-    int n = body_.size();
+    if(body_.size() == 0) { return; }
+
     string key, value;
     int num = 0;
-    for(int i = 0, j = 0; i <= n; i++) {
+    int n = body_.size();
+    int i = 0, j = 0;
+
+    for(; i < n; i++) {
         char ch = body_[i];
         switch (ch) {
         case '=':
@@ -147,13 +153,14 @@ void HttpRequest::ParseFromUrlencoded_() {
             post_[key] = value;
             LOG_DEBUG("%s = %s", key.c_str(), value.c_str());
             break;
-        case '\0':
-            value = body_.substr(j, i - j);
-            post_[key] = value;
-            LOG_DEBUG("%s = %s", key.c_str(), value.c_str());
         default:
             break;
         }
+    }
+    assert(j <= i);
+    if(post_.count(key) == 0 && j < i) {
+        value = body_.substr(j, i - j);
+        post_[key] = value;
     }
 }
 

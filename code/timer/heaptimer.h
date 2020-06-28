@@ -35,9 +35,9 @@ public:
 
     ~HeapTimer() { clear(); }
     
-    void adjust(int id, size_t newExpires);
+    void adjust(int id, int newExpires);
 
-    void add(int id, size_t timeOut, const TimeoutCallBack& cb);
+    void add(int id, int timeOut, const TimeoutCallBack& cb);
 
     void doWork(int id);
 
@@ -59,7 +59,7 @@ private:
     void SwapNode_(size_t i, size_t j);
 
     std::vector<TimerNode> heap_;
-    
+
     std::unordered_map<int, size_t> ref_;
 };
 
