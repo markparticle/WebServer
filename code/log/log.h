@@ -20,8 +20,9 @@
 class Log 
 {
 public:
-    void init(int level, const char* path = "./log", const char* suffix =".log",
-        int maxQueueCapacity = 800);
+    void init(int level, const char* path = "./log", 
+                const char* suffix =".log",
+                int maxQueueCapacity = 800);
 
     static Log* Instance();
     static void FlushLogThread();
@@ -72,7 +73,6 @@ private:
             log->flush();\
         }\
     } while(0);
-
 
 #define LOG_DEBUG(format, ...) do {LOG_BASE(0, format, ##__VA_ARGS__)} while(0);
 #define LOG_INFO(format, ...) do {LOG_BASE(1, format, ##__VA_ARGS__)} while(0);

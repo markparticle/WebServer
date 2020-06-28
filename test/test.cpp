@@ -30,6 +30,4 @@ void TestLog() {
 
 int main() {
     TestLog();
-
-
 }
