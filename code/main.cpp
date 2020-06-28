@@ -8,14 +8,13 @@
 
 int main() {
     //daemon(1, 0);
-    WebServer server(1315, 
-            3306, "root", "root", "webserver", 
-            10, 16, 
-            1, true, true,
-            true, 2, 1000);
-    server.Init();
+
+    WebServer server(
+        1314, 0, true, true, 
+        3306, "root", "root", "webserver", 
+        30, 16, true, 0, 0);
     server.Start();
-}
+} 
 
 
 

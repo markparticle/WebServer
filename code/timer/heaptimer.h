@@ -13,20 +13,33 @@
 #include <arpa/inet.h> 
 #include <functional> 
 #include <assert.h> 
-#include "../http/httpconn.h"
+#include <chrono>
 #include "../log/log.h"
 
+typedef std::function<void()> TimeoutCallBack;
+typedef std::chrono::high_resolution_clock Clock;
+typedef std::chrono::milliseconds MS;
+typedef Clock::time_point TimeStamp;
+
+struct TimerNode {
+    int id;
+    TimeStamp expires;
+    TimeoutCallBack cb;
+    bool operator<(const TimerNode& t) {
+        return expires < t.expires;
+    }
+};
 class HeapTimer {
 public:
     HeapTimer() { heap_.reserve(64); }
 
     ~HeapTimer() { clear(); }
     
-    void adjust(HttpConn* node, time_t newExpires);
+    void adjust(int id, size_t newExpires);
 
-    void add(HttpConn* node, time_t timeSlot);
+    void add(int id, size_t timeOut, const TimeoutCallBack& cb);
 
-    void del(HttpConn* node);
+    void doWork(int id);
 
     void clear();
 
@@ -34,20 +47,20 @@ public:
 
     void pop();
 
-    HttpConn* top() const;
-
-    bool OpenLog() { return true; }
+    int GetNextTick();
 
 private:
-    void siftup_(int i);
-
-    bool siftdown_(int i, int n);
-
-    void SwapNode_(int i, int j);
-
-    std::vector<HttpConn*> heap_;
+    void del_(size_t i);
     
-    std::unordered_map<HttpConn*, int> hash_;
+    void siftup_(size_t i);
+
+    bool siftdown_(size_t index, size_t n);
+
+    void SwapNode_(size_t i, size_t j);
+
+    std::vector<TimerNode> heap_;
+    
+    std::unordered_map<int, size_t> ref_;
 };
 
 #endif //HEAP_TIMER_H

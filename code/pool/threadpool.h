@@ -12,23 +12,18 @@
 #include <queue>
 #include <thread>
 #include <functional>
-#include "../http/httpconn.h"
-
-class  HttpConn;
 class ThreadPool {
-
 public:
-    explicit ThreadPool(size_t threadCount): pool_(std::make_shared<Pool>()) {
+    explicit ThreadPool(size_t threadCount = 8): pool_(std::make_shared<Pool>()) {
             for(size_t i = 0; i < threadCount; i++) {
                 std::thread([pool = pool_] {
                     std::unique_lock<std::mutex> locker(pool->mtx);
                     while(true) {
                         if(!pool->tasks.empty()) {
-                            auto task = std::move(pool->tasks.front().callback);
-                            auto arg = pool->tasks.front().arg;
+                            auto task = std::move(pool->tasks.front());
                             pool->tasks.pop();
                             locker.unlock();
-                            task(arg);
+                            task();
                             locker.lock();
                         } 
                         else if(pool->isClosed) break;
@@ -53,29 +48,22 @@ public:
     }
 
     template<class F>
-    void addTask(F&& task, HttpConn* arg) {
+    void addTask(F&& task) {
         {
             std::lock_guard<std::mutex> locker(pool_->mtx);
-            pool_->tasks.emplace(Node{std::forward<F>(task), arg});
+            pool_->tasks.emplace(std::forward<F>(task));
         }
-        pool_->cond.notify_one();
+        pool_->cond.notify_all();
     }
 
-    bool OpenLog() { return OpenLog_; };
-    
+
 private:
-    struct Node {
-        std::function<void(HttpConn*)> callback;
-        HttpConn* arg;
-    };
     struct Pool {
         std::mutex mtx;
         std::condition_variable cond;
         bool isClosed;
-        std::queue<Node> tasks;
+        std::queue<std::function<void()>> tasks;
     };
-
-    static bool OpenLog_;
 
     std::shared_ptr<Pool> pool_;
 };

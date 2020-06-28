@@ -17,32 +17,23 @@
 class SqlConnPool
 {
 public:
-    static SqlConnPool *GetInstance();
+    static SqlConnPool *Instance();
+
     MYSQL *GetConn();
+
     void FreeConn(MYSQL * conn);
+    
     int GetFreeConnCount();
 
-    void Init(char* host, char*  user, 
-        char* pwd, char* dbName,  int port, 
-        int connSize);
-    
-    void ClosePool();
-    static bool OpenLog() { return openLog; };
+    void Init(const char* host, int port,
+              const char* user,const char* pwd, 
+              const char* dbName, int connSize);
 
-    struct SqlConfig {
-        char host[128];
-        char user[128];
-        char pwd[128];
-        char dbName[128];
-        int port;
-    };
-    static bool openLog;
+    void ClosePool();
 
 private:
     SqlConnPool();
     ~SqlConnPool();
-
-    SqlConfig sqlConfig_;
 
     int MAX_CONN_;
     int useCount_;
