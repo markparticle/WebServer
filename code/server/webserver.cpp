@@ -29,6 +29,7 @@ WebServer::WebServer(
         if(isClose_) { LOG_ERROR("========== Server init error!=========="); }
         else {
             LOG_INFO("========== Server init ==========");
+            LOG_INFO("LogSys level: %d", logLevel);
             LOG_INFO("Listen Mode: %s, OpenConn Mode: %s", 
                     (listenEvent_ & EPOLLET ? "ET": "LT"), 
                     (connEvent_ & EPOLLET ? "ET": "LT"));
@@ -59,6 +60,10 @@ void WebServer::InitEventMode_(int trigMode) {
     case 2:
         listenEvent_ |= EPOLLET;
         break;
+    case 3:
+        listenEvent_ |= EPOLLET;
+        connEvent_ |= EPOLLET;
+        break;
     default:
         listenEvent_ |= EPOLLET;
         connEvent_ |= EPOLLET;
@@ -80,7 +85,7 @@ void WebServer::Start() {
                 DealListen_();
             }
             else if(events & (EPOLLRDHUP | EPOLLHUP | EPOLLERR)) {
-                timer_->doWork(fd);
+                CloseConn_(&users_[fd]);
             }
             else if(events & EPOLLIN) {
                 DealRead_(&users_[fd]);
@@ -104,12 +109,14 @@ void WebServer::SendError_(int fd, const char*info) {
 }
 
 void WebServer::CloseConn_(HttpConn* client) {
+    assert(client);
     epoller_->DelFd(client->GetFd());
     client->Close();
     LOG_INFO("Client[%d] quit!", client->GetFd());
 }
 
 void WebServer::AddClient_(int fd, sockaddr_in addr) {
+    assert(fd > 0);
     users_[fd].init(fd, addr);
     timer_->add(fd, 3 * TIME_SLOT, std::bind(&WebServer::CloseConn_, this, &users_[fd]));
     epoller_->AddFd(fd, EPOLLIN | connEvent_);
@@ -160,31 +167,29 @@ void WebServer::DealWrite_(HttpConn* client) {
 }
 
 void WebServer::ExtentTime_(HttpConn* client) {
+    assert(client);
     timer_->adjust(client->GetFd(), 3 * TIME_SLOT);
 }
 
 void WebServer::OnRead_(HttpConn* client) {
-    LOG_DEBUG("OnRead Client[%d]", client->GetFd());
     assert(client);
     int ret = -1;
-    int readErrno;
+    int readErrno = 0;
     ret = client->read(&readErrno);
  
     if(ret <= 0 && readErrno != EAGAIN && readErrno != EWOULDBLOCK) {
-        LOG_DEBUG("read Client[%d] error", client->GetFd());
-        timer_->doWork(client->GetFd());
+        CloseConn_(client);
         return;
     }
-    
     client->process();
     epoller_->ModFd(client->GetFd(), connEvent_ | EPOLLOUT);
 }
 
 void WebServer::OnWrite_(HttpConn* client) {
-    LOG_DEBUG("OnWrite Client[%d]", client->GetFd());
     assert(client);
     int ret = -1;
-    int writeErrno;
+    int writeErrno = 0;
+    
     ret = client->write(&writeErrno);
     LOG_DEBUG("To Write:%d", client->ToWriteBytes());
     if(client->ToWriteBytes() == 0){
@@ -199,13 +204,13 @@ void WebServer::OnWrite_(HttpConn* client) {
         epoller_->ModFd(client->GetFd(), connEvent_ | EPOLLOUT);
         return;
     }
-    timer_->doWork(client->GetFd());
+    CloseConn_(client);
 }
 
 bool WebServer::InitSocket_() {            
     int ret;
     struct sockaddr_in addr;
-
+    assert(port_ <= 65535 && port_ >= 1024);
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
     addr.sin_port = htons(port_);

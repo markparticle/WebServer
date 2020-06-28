@@ -34,7 +34,7 @@ public:
     ~WebServer();
 
     static const int MAX_FD = 65536;
-    static const time_t TIME_SLOT = 1000;
+    static const time_t TIME_SLOT = 10000;
 
     static int SetFdNonblock(int fd);
     void Start();
