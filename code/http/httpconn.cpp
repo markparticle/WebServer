@@ -10,7 +10,6 @@ const char* HttpConn::srcDir;
 std::atomic<int> HttpConn::userCount;
 bool HttpConn::isET;
 
-
 HttpConn::HttpConn() { 
     fd_ = -1;
     addr_ = { 0 };
@@ -103,7 +102,7 @@ ssize_t HttpConn::write(int* saveErrno) {
             response_.UnmapFile();
             break;
         }
-    } while(isET || ToWriteBytes() > 10240);
+    } while(isET || ToWriteBytes() > 10240); /* LT模式的大文件传输用while */
     return len;
 }
 
@@ -119,10 +118,9 @@ void HttpConn::process() {
 
     iov_[0].iov_base = writeBuff_.Peek();
     iov_[0].iov_len = writeBuff_.ReadableBytes();
-    // LOG_DEBUG("\n%s\n", writeBuff_.Peek());
     iovCnt_ = 1;
+    
     if(response_.FileLen() > 0  && response_.File()) {
-        //LOG_DEBUG("\n%s\n", response_.File());
         iov_[1].iov_base = response_.File();
         iov_[1].iov_len = response_.FileLen();
         iovCnt_ = 2;

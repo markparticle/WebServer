@@ -16,12 +16,12 @@ SqlConnPool* SqlConnPool::Instance() {
     static SqlConnPool connPool;
     return &connPool;
 }
- void SqlConnPool::Init(const char* host, int port,
+
+void SqlConnPool::Init(const char* host, int port,
             const char* user,const char* pwd, const char* dbName,
             int connSize = 10) {
     assert(connSize > 0);
-    for (int i = 0; i < connSize; i++)
-    {
+    for (int i = 0; i < connSize; i++) {
         MYSQL *sql = nullptr;
         sql = mysql_init(sql);
         if (!sql) {

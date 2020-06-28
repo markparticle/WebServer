@@ -14,6 +14,20 @@ const unordered_set<string> HttpRequest::DEFAULT_HTML{
 const unordered_map<string, int> HttpRequest::DEFAULT_HTML_TAG {
             {"/register.html", 0}, {"/login.html", 1},  };
 
+void HttpRequest::Init() {
+    method_ = path_ = version_ = body_ = "";
+    state_ = REQUEST_LINE;
+    header_.clear();
+    post_.clear();
+}
+
+bool HttpRequest::IsKeepAlive() const {
+    if(post_.count("Connection") == 1) {
+        return post_.find("Connection")->second == "Keep-Alive" && version_ == "1.1";
+    }
+    return false;
+}
+
 bool HttpRequest::parse(Buffer& buff) {
     const char* CRLF = "\r\n";
     if(buff.ReadableBytes() <= 0) {
@@ -42,7 +56,7 @@ bool HttpRequest::parse(Buffer& buff) {
         default:
             break;
         }
-        if(lineEnd == buff.BeginWrite()) {break;}
+        if(lineEnd == buff.BeginWrite()) { break; }
         buff.RetrieveUntil(lineEnd + 2);
 
     }
@@ -53,7 +67,7 @@ bool HttpRequest::parse(Buffer& buff) {
 void HttpRequest::ParsePath_() {
     if(path_ == "/") {
         path_ = "/index.html"; 
-    } 
+    }
     else {
         for(auto &item: DEFAULT_HTML) {
             if(item == path_) {
@@ -167,8 +181,9 @@ void HttpRequest::ParseFromUrlencoded_() {
 bool HttpRequest::UserVerify(const string &name, const string &pwd, bool isLogin) {
     if(name == "" || pwd == "") { return false; }
     LOG_INFO("Verify name:%s pwd:%s", name.c_str(), pwd.c_str());
-
-    MYSQL* sql =  SqlConnPool::Instance()->GetConn();
+    MYSQL* sql;
+    SqlConnRAII(&sql,  SqlConnPool::Instance());
+  
     bool flag = false;
     unsigned int j = 0;
     char order[256] = { 0 };
@@ -177,7 +192,7 @@ bool HttpRequest::UserVerify(const string &name, const string &pwd, bool isLogin
     
     if(!isLogin) { flag = true; }
     /* 查询用户及密码 */
-    sprintf(order, "SELECT username, password FROM user WHERE username='%s' LIMIT 1", name.c_str());
+    snprintf(order, 128, "SELECT username, password FROM user WHERE username='%s' LIMIT 1", name.c_str());
     LOG_DEBUG("%s", order);
 
     if(mysql_query(sql, order)) { 
@@ -209,7 +224,7 @@ bool HttpRequest::UserVerify(const string &name, const string &pwd, bool isLogin
     /* 注册行为 且 用户名未被使用*/
     if(!isLogin && flag == true) {
         LOG_DEBUG("regirster!");
-        sprintf(order, "INSERT INTO user(username, password) VALUES('%s','%s')", name.c_str(), pwd.c_str());
+        snprintf(order, 128,"INSERT INTO user(username, password) VALUES('%s','%s')", name.c_str(), pwd.c_str());
         LOG_DEBUG( "%s", order);
         if(mysql_query(sql, order)) { 
             LOG_DEBUG( "Insert error!");
@@ -220,4 +235,35 @@ bool HttpRequest::UserVerify(const string &name, const string &pwd, bool isLogin
     SqlConnPool::Instance()->FreeConn(sql);
     LOG_DEBUG( "UserVerify success!!");
     return flag;
+}
+
+std::string HttpRequest::path() const{
+    return path_;
+}
+
+std::string& HttpRequest::path(){
+    return path_;
+}
+std::string HttpRequest::method() const {
+    return method_;
+}
+
+std::string HttpRequest::version() const {
+    return version_;
+}
+
+std::string HttpRequest::GetPost(const std::string& key) const {
+    assert(key != "");
+    if(post_.count(key) == 1) {
+        return post_.find(key)->second;
+    }
+    return "";
+}
+
+std::string HttpRequest::GetPost(const char* key) const {
+    assert(key != nullptr);
+    if(post_.count(key) == 1) {
+        return post_.find(key)->second;
+    }
+    return "";
 }
