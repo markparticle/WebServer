@@ -1,6 +1,6 @@
 # TinyWebServer
 
-## 环境需求
+## 环境要求
 * C++14
 * Linux
 
