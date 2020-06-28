@@ -7,50 +7,40 @@
 
 using namespace std;
 
-// const char *OK_200_TITLE= "OK";
-// const char *ERROR_400_TITLE = "Bad Request";
-// const char *ERROR_400_FORM = "Your request has bad syntax or is inherently impossible to satisfy.\n";
-// const char *ERROR_403_TITLE = "Forbidden";
-// const char *ERROR_403_FORM = "You do not have permission to get file form this server.\n";
-// const char *ERROR_404_TITLE = "Not Found";
-// const char *ERROR_404_FORM = "The requested file was not found on this server.\n";
-// const char *ERROR_500_TITLE = "Internal Error";
-// const char *ERROR_500_FORM = "There was an unusual problem serving the request file.\n";
-
-const std::unordered_map<std::string, std::string> HttpResponse::SUFFIX_TYPE = {
-    {".html", "text/html"},
-    {".xml", "text/xml"},
-    {".xhtml", "application/xhtml+xml"},
-    {".txt", "text/plain"},
-    {".rtf", "application/rtf"},
-    {".pdf", "application/pdf"},
-    {".word", "application/nsword"},
-    {".png", "image/png"},
-    {".gif", "image/gif"},
-    {".jpg", "image/jpeg"},
-    {".jpeg", "image/jpeg"},
-    {".au", "audio/basic"},
-    {".mpeg", "video/mpeg"},
-    {".mpg", "video/mpeg"},
-    {".avi", "video/x-msvideo"},
-    {".gz", "application/x-gzip"},
-    {".tar", "application/x-tar"},
-    {".css", "text/css"}
+const unordered_map<string, string> HttpResponse::SUFFIX_TYPE = {
+    { ".html",  "text/html" },
+    { ".xml",   "text/xml" },
+    { ".xhtml", "application/xhtml+xml" },
+    { ".txt",   "text/plain" },
+    { ".rtf",   "application/rtf" },
+    { ".pdf",   "application/pdf" },
+    { ".word",  "application/nsword" },
+    { ".png",   "image/png" },
+    { ".gif",   "image/gif" },
+    { ".jpg",   "image/jpeg" },
+    { ".jpeg",  "image/jpeg" },
+    { ".au",    "audio/basic" },
+    { ".mpeg",  "video/mpeg" },
+    { ".mpg",   "video/mpeg" },
+    { ".avi",   "video/x-msvideo" },
+    { ".gz",    "application/x-gzip" },
+    { ".tar",   "application/x-tar" },
+    { ".css",   "text/css "},
 };
 
-const std::unordered_map<int, std::string> HttpResponse::CODE_STATUS = {
-    {200, "OK"},
-    {400, "Bad Request"},
-    {403, "Forbidden"},
-    {404, "Not Found"},
-    {500, "Internal Error"},
+const unordered_map<int, string> HttpResponse::CODE_STATUS = {
+    { 200, "OK" },
+    { 400, "Bad Request" },
+    { 403, "Forbidden" },
+    { 404, "Not Found" },
+    { 500, "Internal Error" },
 };
 
-const std::unordered_map<int, std::string> HttpResponse::CODE_PATH = {
-    {400, "/404.html"},
-    {403, "/403.html"},
-    {404, "/404.html"},
-    {500, "/405.html"},
+const unordered_map<int, string> HttpResponse::CODE_PATH = {
+    { 400, "/404.html" },
+    { 403, "/403.html" },
+    { 404, "/404.html" },
+    { 500, "/405.html" },
 };
 
 HttpResponse::HttpResponse() {
@@ -67,6 +57,7 @@ HttpResponse::~HttpResponse() {
 
 void HttpResponse::Init(const string& srcDir, string& path, bool isKeepAlive, int code){
     assert(srcDir != "" && path != "");
+    if(mmFile_) { UnmapFile(); }
     code_ = code;
     isKeepAlive_ = isKeepAlive_;
     path_ = path;
@@ -108,7 +99,7 @@ void HttpResponse::ErrorHtml_() {
 }
 
 void HttpResponse::AddStateLine_(Buffer& buff) {
-    std::string status;
+    string status;
     if(CODE_STATUS.count(code_) == 1) {
         status = CODE_STATUS.find(code_)->second;
     }
@@ -116,7 +107,7 @@ void HttpResponse::AddStateLine_(Buffer& buff) {
         code_ = 400;
         status = CODE_STATUS.find(400)->second;
     }
-    buff.Append("HTTP/1.1 " + std::to_string(code_) + " " + status + "\r\n");
+    buff.Append("HTTP/1.1 " + to_string(code_) + " " + status + "\r\n");
 }
 
 void HttpResponse::AddHeader_(Buffer& buff) {
@@ -147,7 +138,7 @@ void HttpResponse::AddContent_(Buffer& buff) {
     }
     mmFile_ = (char*)mmRet;
     close(srcFd);
-    buff.Append("Content-length: " + std::to_string(mmFileStat_.st_size) + "\r\n\r\n");
+    buff.Append("Content-length: " + to_string(mmFileStat_.st_size) + "\r\n\r\n");
 }
 
 void HttpResponse::UnmapFile() {
@@ -157,23 +148,23 @@ void HttpResponse::UnmapFile() {
     }
 }
 
-std::string HttpResponse::GetFileType_() {
-    /* 判断资源文件 */
-    int idx = path_.find_last_of('.');
-    if(idx == std::string::npos) {
+string HttpResponse::GetFileType_() {
+    /* 判断文件类型 */
+    string::size_type idx = path_.find_last_of('.');
+    if(idx == string::npos) {
         return "text/plain";
     }
-    std::string suffix = path_.substr(idx);
+    string suffix = path_.substr(idx);
     if(SUFFIX_TYPE.count(suffix) == 1) {
         return SUFFIX_TYPE.find(suffix)->second;
     }
     return "text/plain";
 }
 
-void HttpResponse::ErrorContent(Buffer& buff, std::string message) 
+void HttpResponse::ErrorContent(Buffer& buff, string message) 
 {
-    std::string body;
-    std::string status;
+    string body;
+    string status;
     body += "<html><title>Error</title>";
     body += "<body bgcolor=\"ffffff\">";
     if(CODE_STATUS.count(code_) == 1) {
@@ -181,10 +172,10 @@ void HttpResponse::ErrorContent(Buffer& buff, std::string message)
     } else {
         status = "Bad Request";
     }
-    body += std::to_string(code_) + " : " + status  + "\n";
+    body += to_string(code_) + " : " + status  + "\n";
     body += "<p>" + message + "</p>";
     body += "<hr><em>TinyWebServer server</em></body></html>";
 
-    buff.Append("Content-length: " + std::to_string(body.size()) + "\r\n\r\n");
+    buff.Append("Content-length: " + to_string(body.size()) + "\r\n\r\n");
     buff.Append(body);
 }

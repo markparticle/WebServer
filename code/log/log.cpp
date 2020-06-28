@@ -49,6 +49,7 @@ void Log::init(int level = 1, const char* path, const char* suffix,
         if(!deque_) {
             unique_ptr<BlockDeque<std::string>> newDeque(new BlockDeque<std::string>);
             deque_ = move(newDeque);
+            
             std::unique_ptr<std::thread> NewThread(new thread(FlushLogThread));
             writeThread_ = move(NewThread);
         }
@@ -94,7 +95,7 @@ void Log::write(int level, const char *format, ...) {
         {
             char newFile[LOG_NAME_LEN];
             char tail[16] = {0};
-            sprintf(tail, "%04d_%02d_%02d", t.tm_year + 1900, t.tm_mon + 1, t.tm_mday);
+            snprintf(tail, 20, "%04d_%02d_%02d", t.tm_year + 1900, t.tm_mon + 1, t.tm_mday);
 
             if (toDay_ != t.tm_mday)
             {
@@ -120,16 +121,14 @@ void Log::write(int level, const char *format, ...) {
     va_start(vaList, format);
     {
         lock_guard<mutex> locker(mtx_);
-        int n = sprintf(buff_.BeginWrite(), "%d-%02d-%02d %02d:%02d:%02d.%06ld ",
+        int n = snprintf(buff_.BeginWrite(), 128, "%d-%02d-%02d %02d:%02d:%02d.%06ld ",
             t.tm_year + 1900, t.tm_mon + 1, t.tm_mday,
             t.tm_hour, t.tm_min, t.tm_sec, now.tv_usec);
         buff_.HasWritten(n);
-
         AppendLogLevel_();
-
-        int m = vsprintf(buff_.BeginWrite(), format, vaList);
+        
+        int m = vsnprintf(buff_.BeginWrite(), buff_.WritableBytes(), format, vaList);
         buff_.HasWritten(m);
-
         buff_.Append("\n\0", 2);
     }
 

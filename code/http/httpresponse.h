@@ -7,10 +7,10 @@
 #define HTTP_RESPONSE_H
 
 #include <unordered_map>
-#include <fcntl.h> // open
-#include <unistd.h> // close
-#include <sys/stat.h> // stat
-#include <sys/mman.h> // mmap, munmap
+#include <fcntl.h>       // open
+#include <unistd.h>      // close
+#include <sys/stat.h>    // stat
+#include <sys/mman.h>    // mmap, munmap
 
 #include "../buffer/buffer.h"
 #include "../log/log.h"

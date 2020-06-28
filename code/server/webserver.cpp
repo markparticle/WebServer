@@ -17,6 +17,7 @@ WebServer::WebServer(
     timer_(new HeapTimer()), threadpool_(new ThreadPool(threadNum)), epoller_(new Epoller())
 {
     srcDir_ = getcwd(nullptr, 256);
+    assert(srcDir_);
     strcat(srcDir_, "/resources/html");
     HttpConn::userCount = 0;
     HttpConn::srcDir = srcDir_;
@@ -85,12 +86,15 @@ void WebServer::Start() {
                 DealListen_();
             }
             else if(events & (EPOLLRDHUP | EPOLLHUP | EPOLLERR)) {
+                assert(users_.count(fd) > 0);
                 CloseConn_(&users_[fd]);
             }
             else if(events & EPOLLIN) {
+                assert(users_.count(fd) > 0);
                 DealRead_(&users_[fd]);
             }
             else if(events & EPOLLOUT) {
+                assert(users_.count(fd) > 0);
                 DealWrite_(&users_[fd]);
             } else {
                 LOG_ERROR("Unexpected event");
@@ -210,7 +214,10 @@ void WebServer::OnWrite_(HttpConn* client) {
 bool WebServer::InitSocket_() {            
     int ret;
     struct sockaddr_in addr;
-    assert(port_ <= 65535 && port_ >= 1024);
+    if(port_ > 65535 && port_ < 1024) {
+        LOG_ERROR("Port:%d error!",  port_);
+        return false;
+    }
     addr.sin_family = AF_INET;
     addr.sin_addr.s_addr = htonl(INADDR_ANY);
     addr.sin_port = htons(port_);
@@ -223,14 +230,14 @@ bool WebServer::InitSocket_() {
 
     listenFd_ = socket(AF_INET, SOCK_STREAM, 0);
     if(listenFd_ < 0) {
-        LOG_ERROR("Create socket error!", addr.sin_port);
+        LOG_ERROR("Create socket error!", port_);
         return false;
     }
 
     ret = setsockopt(listenFd_, SOL_SOCKET, SO_LINGER, &optLinger, sizeof(optLinger));
     if(ret < 0) {
         close(listenFd_);
-        LOG_ERROR("Init linger error!", addr.sin_port);
+        LOG_ERROR("Init linger error!", port_);
         return false;
     }
     
@@ -244,14 +251,14 @@ bool WebServer::InitSocket_() {
 
     ret = bind(listenFd_, (struct sockaddr *)&addr, sizeof(addr));
     if(ret < 0) {
-        LOG_ERROR("Bind Port:%d error!", addr.sin_port);
+        LOG_ERROR("Bind Port:%d error!", port_);
         close(listenFd_);
         return false;
     }
 
     ret = listen(listenFd_, 6);
     if(ret < 0) {
-        LOG_ERROR("Listen port:%d error!", addr.sin_port);
+        LOG_ERROR("Listen port:%d error!", port_);
         close(listenFd_);
         return false;
     }

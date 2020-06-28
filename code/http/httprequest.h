@@ -10,19 +10,16 @@
 #include <unordered_set>
 #include <string>
 #include <regex>
-#include <errno.h>     // errno
-#include <mysql/mysql.h> //mysql
+#include <errno.h>     
+#include <mysql/mysql.h>  //mysql
 
 #include "../buffer/buffer.h"
 #include "../log/log.h"
 #include "../pool/sqlconnpool.h"
+#include "../pool/sqlconnRAII.h"
 
 class HttpRequest {
 public:
-    HttpRequest() {
-        Init();
-    }
-    
     enum PARSE_STATE {
         REQUEST_LINE,
         HEADERS,
@@ -41,44 +38,20 @@ public:
         CLOSED_CONNECTION,
     };
     
+    HttpRequest() { Init(); }
+    ~HttpRequest() = default;
+
+    void Init();
     bool parse(Buffer& buff);
 
-    std::string path() const{
-        return path_;
-    }
+    std::string path() const;
+    std::string& path();
+    std::string method() const;
+    std::string version() const;
+    std::string GetPost(const std::string& key) const;
+    std::string GetPost(const char* key) const;
 
-    std::string& path(){
-        return path_;
-    }
-    std::string method() const {
-        return method_;
-    }
-    
-    std::string version() const {
-        return method_;
-    }
-
-    std::string GetPost(const std::string& key) const {
-        assert(key != "");
-        if(post_.count(key) == 1) {
-            return post_.find(key)->second;
-        }
-        return "";
-    }
-
-    bool IsKeepAlive() const {
-        if(post_.count("Connection") == 1) {
-            return post_.find("Connection")->second == "Keep-Alive" && version_ == "1.1";
-        }
-        return false;
-    }
-
-    void Init() {
-        method_ = path_ = version_ = body_ = "";
-        state_ = REQUEST_LINE;
-        header_.clear();
-        post_.clear();
-    }
+    bool IsKeepAlive() const;
 
     /* 
     todo 
