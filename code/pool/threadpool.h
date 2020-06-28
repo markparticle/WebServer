@@ -15,6 +15,7 @@
 class ThreadPool {
 public:
     explicit ThreadPool(size_t threadCount = 8): pool_(std::make_shared<Pool>()) {
+            assert(threadCount > 0);
             for(size_t i = 0; i < threadCount; i++) {
                 std::thread([pool = pool_] {
                     std::unique_lock<std::mutex> locker(pool->mtx);
@@ -64,7 +65,6 @@ private:
         bool isClosed;
         std::queue<std::function<void()>> tasks;
     };
-
     std::shared_ptr<Pool> pool_;
 };
 

@@ -59,6 +59,7 @@ public:
     }
 
     std::string GetPost(const std::string& key) const {
+        assert(key != "");
         if(post_.count(key) == 1) {
             return post_.find(key)->second;
         }
@@ -74,9 +75,9 @@ public:
 
     void Init() {
         method_ = path_ = version_ = body_ = "";
+        state_ = REQUEST_LINE;
         header_.clear();
         post_.clear();
-        state_ = REQUEST_LINE;
     }
 
     /* 
@@ -86,7 +87,6 @@ public:
     */
 
 private:
-
     bool ParseRequestLine_(const std::string& line);
     void ParseHeader_(const std::string& line);
     void ParseBody_(const std::string& line);

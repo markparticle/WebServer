@@ -66,6 +66,7 @@ HttpResponse::~HttpResponse() {
 }
 
 void HttpResponse::Init(const string& srcDir, string& path, bool isKeepAlive, int code){
+    assert(srcDir != "" && path != "");
     code_ = code;
     isKeepAlive_ = isKeepAlive_;
     path_ = path;
@@ -95,7 +96,7 @@ char* HttpResponse::File() {
     return mmFile_;
 }
 
-int HttpResponse::FileLen() {
+int HttpResponse::FileLen() const {
     return mmFileStat_.st_size;
 }
 
@@ -130,7 +131,6 @@ void HttpResponse::AddHeader_(Buffer& buff) {
 }
 
 void HttpResponse::AddContent_(Buffer& buff) {
-    
     int srcFd = open((srcDir_ + path_).data(), O_RDONLY);
     if(srcFd < 0) { 
         ErrorContent(buff, "File NotFound!");
@@ -140,7 +140,12 @@ void HttpResponse::AddContent_(Buffer& buff) {
     /* 将文件映射到内存提高文件的访问速度 
         MAP_PRIVATE 建立一个写入时拷贝的私有映射*/
     LOG_DEBUG("file path %s", (srcDir_ + path_).data());
-    mmFile_ = (char*)mmap(0, mmFileStat_.st_size, PROT_READ, MAP_PRIVATE, srcFd, 0);
+    int* mmRet = (int*)mmap(0, mmFileStat_.st_size, PROT_READ, MAP_PRIVATE, srcFd, 0);
+    if(*mmRet == -1) {
+        ErrorContent(buff, "File NotFound!");
+        return; 
+    }
+    mmFile_ = (char*)mmRet;
     close(srcFd);
     buff.Append("Content-length: " + std::to_string(mmFileStat_.st_size) + "\r\n\r\n");
 }
@@ -168,9 +173,15 @@ std::string HttpResponse::GetFileType_() {
 void HttpResponse::ErrorContent(Buffer& buff, std::string message) 
 {
     std::string body;
+    std::string status;
     body += "<html><title>Error</title>";
     body += "<body bgcolor=\"ffffff\">";
-    body += std::to_string(code_) + " : " + CODE_STATUS.find(code_)->second + "\n";
+    if(CODE_STATUS.count(code_) == 1) {
+        status = CODE_STATUS.find(code_)->second;
+    } else {
+        status = "Bad Request";
+    }
+    body += std::to_string(code_) + " : " + status  + "\n";
     body += "<p>" + message + "</p>";
     body += "<hr><em>TinyWebServer server</em></body></html>";
 

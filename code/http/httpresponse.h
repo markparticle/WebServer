@@ -24,11 +24,9 @@ public:
     void MakeResponse(Buffer& buff);
     void UnmapFile();
     char* File();
-    int FileLen();
+    int FileLen() const;
     void ErrorContent(Buffer& buff, std::string message);
-    int Code() const {
-        return code_;
-    }
+    int Code() const { return code_; }
 
 private:
     void AddStateLine_(Buffer &buff);
@@ -43,8 +41,7 @@ private:
 
     std::string path_;
     std::string srcDir_;
-    Buffer buff_;
-
+    
     char* mmFile_; 
     struct stat mmFileStat_;
 
