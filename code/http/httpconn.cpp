@@ -87,14 +87,14 @@ ssize_t HttpConn::write(int* saveErrno) {
         }
  
         if(len > iov_[0].iov_len && iovCnt_ == 2) {
-            iov_[1].iov_base = iov_[1].iov_base + (len - iov_[0].iov_len);
+            iov_[1].iov_base = (uint8_t*)iov_[1].iov_base + (len - iov_[0].iov_len);
             iov_[1].iov_len -= (len - iov_[0].iov_len);
 
             writeBuff_.RetrieveAll();
             iov_[0].iov_len = 0;
         }
         else {
-            iov_[0].iov_base = iov_[0].iov_base + len; 
+            iov_[0].iov_base = (uint8_t*)iov_[0].iov_base + len; 
             iov_[0].iov_len -= len; 
             writeBuff_.Retrieve(len);
         }

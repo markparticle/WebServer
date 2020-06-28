@@ -167,10 +167,11 @@ void HttpRequest::ParseFromUrlencoded_() {
 bool HttpRequest::UserVerify(const string &name, const string &pwd, bool isLogin) {
     if(name == "" || pwd == "") { return false; }
     LOG_INFO("Verify name:%s pwd:%s", name.c_str(), pwd.c_str());
+
     MYSQL* sql =  SqlConnPool::Instance()->GetConn();
-    unsigned int j = 0;
     bool flag = false;
-    char order[256];
+    unsigned int j = 0;
+    char order[256] = { 0 };
     MYSQL_FIELD *fields = nullptr;
     MYSQL_RES *res = nullptr;
     
