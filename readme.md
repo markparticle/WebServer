@@ -67,8 +67,8 @@ make
 ## TODO
 * HTTP请求体数据解析 Json/form-data
 * Config(Json格式)
-* 单元测试
-* 循环缓冲区
+* 完善单元测试
+* 完善循环缓冲区
 * HTTPS加密(Cryto++库)
 * 文件压缩
 * 登录 cookie/session
