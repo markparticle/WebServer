@@ -13,10 +13,8 @@ Log::Log() {
     writeThread_ = nullptr;
     deque_ = nullptr;
 
-    BUFF_SIZE_ = 128;
     toDay_ = 0;
     fp_ = nullptr;
-    buffer_ = new char[BUFF_SIZE_];
 }
 
 Log::~Log() {
@@ -27,11 +25,10 @@ Log::~Log() {
         deque_->Close();
         writeThread_->join();
     }
-    if(fp_ != nullptr) {
+    if(fp_) {
         flush();
         fclose(fp_);
     }
-    delete[] buffer_;
 }
 
 int Log::GetLevel() const {
@@ -39,12 +36,14 @@ int Log::GetLevel() const {
 }
 
 void Log::SetLevel(int level) {
+    lock_guard<mutex> locker(mtx_);
     level_ = level;
 }
 
 void Log::init(int level = 1, const char* path, const char* suffix,
     int maxQueueSize) {
     isOpen_ = true;
+    level_ = level;
     if(maxQueueSize > 0) {
         isAsync_ = true;
         if(!deque_) {
@@ -53,9 +52,10 @@ void Log::init(int level = 1, const char* path, const char* suffix,
             std::unique_ptr<std::thread> NewThread(new thread(FlushLogThread));
             writeThread_ = move(NewThread);
         }
+    } else {
+        isAsync_ = false;
     }
-    level_ = level;
-    memset(buffer_, 0, BUFF_SIZE_);
+    buff_.RetrieveAll();
     lineCount_ = 0;
 
     time_t timer = time(nullptr);
@@ -79,37 +79,13 @@ void Log::init(int level = 1, const char* path, const char* suffix,
 
 void Log::write(int level, const char *format, ...) {
     if(isAsync_) { deque_->flush(); } 
-    int fLen = strnlen(format, 1024) + 40;
-    while(fLen > BUFF_SIZE_) {
-        BUFF_SIZE_ += (BUFF_SIZE_ + 1) / 2;
-        delete[] buffer_;
-        buffer_ = new char[BUFF_SIZE_];
-    }
-    
+
     struct timeval now = {0, 0};
     gettimeofday(&now, nullptr);
     time_t tSec = now.tv_sec;
     struct tm *sysTime = localtime(&tSec);
     struct tm t = *sysTime;
-
-    char str[16] = {0};
-    switch(level) {
-    case 0:
-        strcpy(str, "[debug]:");
-        break;
-    case 1:
-        strcpy(str, "[info] :");
-        break;
-    case 2:
-        strcpy(str, "[warn] :");
-        break;
-    case 3:
-        strcpy(str, "[error]:");
-        break;
-    default:
-        strcpy(str, "[info] :");
-        break;
-    }
+    
     {
         unique_lock<mutex> locker(mtx_);
         locker.unlock();
@@ -118,7 +94,7 @@ void Log::write(int level, const char *format, ...) {
         {
             char newFile[LOG_NAME_LEN];
             char tail[16] = {0};
-            snprintf(tail, 16, "%04d_%02d_%02d", t.tm_year + 1900, t.tm_mon + 1, t.tm_mday);
+            sprintf(tail, "%04d_%02d_%02d", t.tm_year + 1900, t.tm_mon + 1, t.tm_mday);
 
             if (toDay_ != t.tm_mday)
             {
@@ -130,11 +106,7 @@ void Log::write(int level, const char *format, ...) {
                 snprintf(newFile, LOG_NAME_LEN - 1, "%s/%s-%d%s",
                          path_, tail, (lineCount_  / MAX_LINES), suffix_);
             }
-            // if(isAsync_) { 
-            //     while (!deque_->empty()){
-            //         deque_->flush(); 
-            //     }
-            // } 
+
             locker.lock();
             fflush(fp_);
             fclose(fp_);
@@ -146,33 +118,55 @@ void Log::write(int level, const char *format, ...) {
 
     va_list vaList;
     va_start(vaList, format);
+    {
+        lock_guard<mutex> locker(mtx_);
+        int n = sprintf(buff_.BeginWrite(), "%d-%02d-%02d %02d:%02d:%02d.%06ld ",
+            t.tm_year + 1900, t.tm_mon + 1, t.tm_mday,
+            t.tm_hour, t.tm_min, t.tm_sec, now.tv_usec);
+        buff_.HasWritten(n);
 
-    string context = "";
-    memset(buffer_, 0, BUFF_SIZE_);
-    int n = snprintf(buffer_, 48, "%d-%02d-%02d %02d:%02d:%02d.%06ld %s ",
-        t.tm_year + 1900, t.tm_mon + 1, t.tm_mday,
-        t.tm_hour, t.tm_min, t.tm_sec, now.tv_usec, str);
-    int m = vsnprintf(buffer_ + n, BUFF_SIZE_ - 1, format, vaList);
-    buffer_[n + m] = '\n';
-    buffer_[n + m + 1] = '\0';
-    context = buffer_;
-    
+        AppendLogLevel_();
+
+        int m = vsprintf(buff_.BeginWrite(), format, vaList);
+        buff_.HasWritten(m);
+
+        buff_.Append("\n\0", 2);
+    }
 
     if(isAsync_ || (deque_ && deque_->full())) {
-         deque_->push_back(context);
+         deque_->push_back(buff_.RetrieveAllToStr());
     } 
     else {
         lock_guard<mutex> locker(mtx_);
-        fputs(context.c_str(), fp_);
+        fputs(buff_.Peek(), fp_);
+        buff_.RetrieveAll();
     }
     va_end(vaList);
 }
 
-void Log::flush(void) {
-    {
-        lock_guard<mutex> locker(mtx_);
-        fflush(fp_);
+void Log::AppendLogLevel_() {
+    switch(level_) {
+    case 0:
+        buff_.Append("[debug]: ", 9);
+        break;
+    case 1:
+        buff_.Append("[info] : ", 9);
+        break;
+    case 2:
+        buff_.Append("[warn] : ", 9);
+        break;
+    case 3:
+        buff_.Append("[error]: ", 9);
+        break;
+    default:
+        buff_.Append("[info] : ", 9);
+        break;
     }
+}
+
+void Log::flush(void) {
+    lock_guard<mutex> locker(mtx_);
+    fflush(fp_);
 }
 
 void Log::AsyncWrite_() {

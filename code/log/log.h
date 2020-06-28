@@ -15,6 +15,7 @@
 #include <assert.h>
 #include <sys/stat.h>         //mkdir
 #include "blockqueue.h"
+#include "../buffer/buffer.h"
 
 class Log 
 {
@@ -30,11 +31,11 @@ public:
 
     int GetLevel() const;
     void SetLevel(int level);
-    bool IsOpen() {
-        return isOpen_;
-    }
+    bool IsOpen() { return isOpen_; }
+    
 private:
     Log();
+    void AppendLogLevel_();
     virtual ~Log();
     void AsyncWrite_();
 
@@ -47,14 +48,13 @@ private:
     const char* suffix_;
 
     int MAX_LINES_;
-    int BUFF_SIZE_;
 
     int lineCount_;
     int toDay_;
 
     bool isOpen_;
  
-    char* buffer_;
+    Buffer buff_;
     int level_;
     bool isAsync_;
 
