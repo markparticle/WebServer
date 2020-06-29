@@ -14,21 +14,17 @@
 #include <thread>
 #include "../log/log.h"
 
-class SqlConnPool
-{
+class SqlConnPool {
 public:
     static SqlConnPool *Instance();
 
     MYSQL *GetConn();
-
     void FreeConn(MYSQL * conn);
-    
     int GetFreeConnCount();
 
     void Init(const char* host, int port,
               const char* user,const char* pwd, 
               const char* dbName, int connSize);
-
     void ClosePool();
 
 private:

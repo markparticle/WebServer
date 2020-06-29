@@ -17,8 +17,7 @@
 #include "blockqueue.h"
 #include "../buffer/buffer.h"
 
-class Log 
-{
+class Log {
 public:
     void init(int level, const char* path = "./log", 
                 const char* suffix =".log",

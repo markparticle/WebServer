@@ -12,8 +12,7 @@
 #include <sys/time.h>
 
 template<class T>
-class BlockDeque
-{
+class BlockDeque {
 public:
     explicit BlockDeque(size_t MaxCapacity = 1000);
 
