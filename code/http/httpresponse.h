@@ -24,7 +24,7 @@ public:
     void MakeResponse(Buffer& buff);
     void UnmapFile();
     char* File();
-    int FileLen() const;
+    size_t FileLen() const;
     void ErrorContent(Buffer& buff, std::string message);
     int Code() const { return code_; }
 

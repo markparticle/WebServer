@@ -40,10 +40,6 @@ void HttpConn::Close() {
     }
 }
 
-bool HttpConn::IsClose() const {
-    return isClose_;
-};
-
 int HttpConn::GetFd() const {
     return fd_;
 };
@@ -116,7 +112,7 @@ void HttpConn::process() {
     LOG_DEBUG("Parse code: %d, %s", response_.Code(), request_.path().c_str());
     response_.MakeResponse(writeBuff_);
 
-    iov_[0].iov_base = writeBuff_.Peek();
+    iov_[0].iov_base = const_cast<char*>(writeBuff_.Peek());
     iov_[0].iov_len = writeBuff_.ReadableBytes();
     iovCnt_ = 1;
     

@@ -22,7 +22,7 @@ class Log
 public:
     void init(int level, const char* path = "./log", 
                 const char* suffix =".log",
-                int maxQueueCapacity = 800);
+                int maxQueueCapacity = 1024);
 
     static Log* Instance();
     static void FlushLogThread();
@@ -30,18 +30,18 @@ public:
     void write(int level, const char *format,...);
     void flush();
 
-    int GetLevel() const;
+    int GetLevel();
     void SetLevel(int level);
     bool IsOpen() { return isOpen_; }
     
 private:
     Log();
-    void AppendLogLevel_();
+    void AppendLogLevelTitle_(int level);
     virtual ~Log();
     void AsyncWrite_();
 
 private:
-    static const int LOG_PATH_LEN = 128;
+    static const int LOG_PATH_LEN = 256;
     static const int LOG_NAME_LEN = 256;
     static const int MAX_LINES = 50000;
 

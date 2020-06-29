@@ -5,7 +5,7 @@
  */ 
 #include "buffer.h"
 
-Buffer::Buffer() : buffer_(INIT_BUFF_SIZE), readPos_(0), writePos_(0) {}
+Buffer::Buffer(int initBuffSize) : buffer_(initBuffSize), readPos_(0), writePos_(0) {}
 
 size_t Buffer::ReadableBytes() const {
     return writePos_ - readPos_;
@@ -22,10 +22,6 @@ const char* Buffer::Peek() const {
     return BeginPtr_() + readPos_;
 }
 
-char* Buffer::Peek(){
-    return BeginPtr_() + readPos_;
-}
-
 void Buffer::Retrieve(size_t len) {
     assert(len <= ReadableBytes());
     readPos_ += len;
@@ -37,6 +33,7 @@ void Buffer::RetrieveUntil(const char* end) {
 }
 
 void Buffer::RetrieveAll() {
+    bzero(&buffer_[0], buffer_.size());
     readPos_ = 0;
     writePos_ = 0;
 }
@@ -62,14 +59,17 @@ void Buffer::HasWritten(size_t len) {
 void Buffer::Append(const std::string& str) {
     Append(str.data(), str.length());
 }
-void Buffer::Append(const char* data, size_t len) {
-    EnsureWriteable(len);
-    std::copy(data, data + len, BeginWrite());
-    HasWritten(len);
-}
 
 void Buffer::Append(const void* data, size_t len) {
+    assert(data);
     Append(static_cast<const char*>(data), len);
+}
+
+void Buffer::Append(const char* str, size_t len) {
+    assert(str);
+    EnsureWriteable(len);
+    std::copy(str, str + len, BeginWrite());
+    HasWritten(len);
 }
 
 void Buffer::Append(const Buffer& buff) {
@@ -84,7 +84,7 @@ void Buffer::EnsureWriteable(size_t len) {
 }
 
 ssize_t Buffer::ReadFd(int fd, int* saveErrno) {
-    char buff[MAX_BUFF_SIZE];
+    char buff[65535];
     struct iovec iov[2];
     const size_t writable = WritableBytes();
     /* 分散读， 保证数据全部读完 */

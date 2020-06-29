@@ -30,7 +30,6 @@ public:
     ssize_t write(int* saveErrno);
 
     void Close();
-    bool IsClose() const;
 
     int GetFd() const;
     int GetPort() const;

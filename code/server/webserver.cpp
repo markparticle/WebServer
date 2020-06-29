@@ -18,7 +18,7 @@ WebServer::WebServer(
 {
     srcDir_ = getcwd(nullptr, 256);
     assert(srcDir_);
-    strcat(srcDir_, "/resources/html");
+    strncat(srcDir_, "/resources/html", 16);
     HttpConn::userCount = 0;
     HttpConn::srcDir = srcDir_;
     SqlConnPool::Instance()->Init("localhost", sqlPort, sqlUser, sqlPwd, dbName, connPoolNum);

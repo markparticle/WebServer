@@ -74,8 +74,8 @@ void HttpResponse::MakeResponse(Buffer& buff) {
     else if(!(mmFileStat_.st_mode & S_IROTH)) {
         code_ = 403;
     }
-    else if(code_ <= 200) {
-        code_ = 200;
+    else if(code_ == -1) { 
+        code_ = 200; 
     }
     ErrorHtml_();
     AddStateLine_(buff);
@@ -87,7 +87,7 @@ char* HttpResponse::File() {
     return mmFile_;
 }
 
-int HttpResponse::FileLen() const {
+size_t HttpResponse::FileLen() const {
     return mmFileStat_.st_size;
 }
 
@@ -114,7 +114,7 @@ void HttpResponse::AddHeader_(Buffer& buff) {
     buff.Append("Connection: ");
     if(isKeepAlive_) {
         buff.Append("Keep-Alive\r\n");
-        buff.Append("Keep-Alive: timeout=3000\r\n");
+        buff.Append("Keep-Alive: timeout=10000\r\n");
     } else{
         buff.Append("close\r\n");
     }
@@ -174,7 +174,7 @@ void HttpResponse::ErrorContent(Buffer& buff, string message)
     }
     body += to_string(code_) + " : " + status  + "\n";
     body += "<p>" + message + "</p>";
-    body += "<hr><em>TinyWebServer server</em></body></html>";
+    body += "<hr><em>TinyWebServer</em></body></html>";
 
     buff.Append("Content-length: " + to_string(body.size()) + "\r\n\r\n");
     buff.Append(body);

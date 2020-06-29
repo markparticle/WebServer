@@ -29,12 +29,12 @@ bool HttpRequest::IsKeepAlive() const {
 }
 
 bool HttpRequest::parse(Buffer& buff) {
-    const char* CRLF = "\r\n";
+    const char CRLF[] = "\r\n";
     if(buff.ReadableBytes() <= 0) {
         return false;
     }
     while(buff.ReadableBytes() && state_ != FINISH) {
-        char* lineEnd = search(buff.Peek(), buff.BeginWrite(), CRLF, CRLF + 2);
+        const char* lineEnd = search(buff.Peek(), buff.BeginWriteConst(), CRLF, CRLF + 2);
         std::string line(buff.Peek(), lineEnd);
         switch(state_)
         {
@@ -192,7 +192,7 @@ bool HttpRequest::UserVerify(const string &name, const string &pwd, bool isLogin
     
     if(!isLogin) { flag = true; }
     /* 查询用户及密码 */
-    snprintf(order, 128, "SELECT username, password FROM user WHERE username='%s' LIMIT 1", name.c_str());
+    snprintf(order, 256, "SELECT username, password FROM user WHERE username='%s' LIMIT 1", name.c_str());
     LOG_DEBUG("%s", order);
 
     if(mysql_query(sql, order)) { 
@@ -224,7 +224,8 @@ bool HttpRequest::UserVerify(const string &name, const string &pwd, bool isLogin
     /* 注册行为 且 用户名未被使用*/
     if(!isLogin && flag == true) {
         LOG_DEBUG("regirster!");
-        snprintf(order, 128,"INSERT INTO user(username, password) VALUES('%s','%s')", name.c_str(), pwd.c_str());
+        bzero(order, 256);
+        snprintf(order, 256,"INSERT INTO user(username, password) VALUES('%s','%s')", name.c_str(), pwd.c_str());
         LOG_DEBUG( "%s", order);
         if(mysql_query(sql, order)) { 
             LOG_DEBUG( "Insert error!");
