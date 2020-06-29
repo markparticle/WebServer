@@ -82,7 +82,7 @@ void WebServer::InitEventMode_(int trigMode) {
 }
 
 void WebServer::Start() {
-    int timeMS = -1;
+    int timeMS = -1;  /* epoll wait timeout == -1 无事件将阻塞 */
     if(!isClose_) { LOG_INFO("========== Server start =========="); }
     while(!isClose_) {
         if(timeoutMS_ > 0) {
