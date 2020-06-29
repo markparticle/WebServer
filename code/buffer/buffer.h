@@ -13,11 +13,9 @@
 #include <vector> //readv
 #include <atomic>
 #include <assert.h>
-
-
 class Buffer {
 public:
-    Buffer();
+    Buffer(int initBuffSize = 1024);
     ~Buffer() = default;
 
     size_t WritableBytes() const;       
@@ -25,7 +23,6 @@ public:
     size_t PrependableBytes() const;
 
     const char* Peek() const;
-    char* Peek();
     void EnsureWriteable(size_t len);
     void HasWritten(size_t len);
 
@@ -39,7 +36,7 @@ public:
     char* BeginWrite();
 
     void Append(const std::string& str);
-    void Append(const char* data, size_t len);
+    void Append(const char* str, size_t len);
     void Append(const void* data, size_t len);
     void Append(const Buffer& buff);
 
@@ -47,9 +44,6 @@ public:
     ssize_t WriteFd(int fd, int* Errno);
 
 private:
-    const size_t MAX_BUFF_SIZE = 65535;
-    const size_t INIT_BUFF_SIZE = 512;
-
     char* BeginPtr_();
     const char* BeginPtr_() const;
     void MakeSpace_(size_t len);
