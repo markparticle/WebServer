@@ -19,13 +19,13 @@
 #include "httprequest.h"
 #include "httpresponse.h"
 
-
 class HttpConn {
 public:
     HttpConn();
     ~HttpConn();
 
     void init(int sockFd, const sockaddr_in& addr);
+    void reset();
     ssize_t read(int* saveErrno);
     ssize_t write(int* saveErrno);
 
@@ -35,7 +35,7 @@ public:
     int GetPort() const;
     const char* GetIP() const;
     sockaddr_in GetAddr() const;
-
+    
     void process();
     int ToWriteBytes() { 
         return iov_[0].iov_len + iov_[1].iov_len; 
@@ -49,6 +49,7 @@ public:
     static std::atomic<int> userCount;
     
 private:
+   
     int fd_;
     struct  sockaddr_in addr_;
 

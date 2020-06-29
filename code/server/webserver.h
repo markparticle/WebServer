@@ -26,7 +26,7 @@
 class WebServer {
 public:
     WebServer(
-        int port, int trigMode, bool isReactor, bool OptLinger,
+        int port, int trigMode, int timeoutMS, bool isReactor, bool OptLinger, 
         int sqlPort, const char* sqlUser, const  char* sqlPwd, 
         const char* dbName, int connPoolNum, int threadNum,
         bool openLog, int logLevel, int logQueSize);
@@ -51,14 +51,14 @@ private:
     void OnWrite_(HttpConn* client);
     
     static const int MAX_FD = 65536;
-    static const time_t TIME_SLOT = 10000;  /* 毫秒MS */
+
     static int SetFdNonblock(int fd);
 
     int port_;
     bool openLinger_;
     bool isReactor_;
+    int timeoutMS_;  /* 毫秒MS */
     bool isClose_;
-
     int listenFd_;
     char* srcDir_;
     
