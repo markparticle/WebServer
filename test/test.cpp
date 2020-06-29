@@ -1,7 +1,7 @@
 /*
  * @Author       : mark
  * @Date         : 2020-06-20
- * @copyleft GPL 2.0
+ * @copyleft Apache 2.0
  */ 
 #include "../code/log/log.h"
 #include "../code/pool/threadpool.h"

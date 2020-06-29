@@ -1,7 +1,7 @@
 /*
  * @Author       : mark
  * @Date         : 2020-06-15
- * @copyleft GPL 2.0
+ * @copyleft Apache 2.0
  */ 
 #ifndef EPOLLER_H
 #define EPOLLER_H
