@@ -12,7 +12,6 @@ Log::Log() {
     isAsync_ = false;
     writeThread_ = nullptr;
     deque_ = nullptr;
-
     toDay_ = 0;
     fp_ = nullptr;
 }
@@ -31,7 +30,8 @@ Log::~Log() {
     }
 }
 
-int Log::GetLevel() const {
+int Log::GetLevel() {
+    lock_guard<mutex> locker(mtx_);
     return level_;
 }
 
@@ -56,7 +56,7 @@ void Log::init(int level = 1, const char* path, const char* suffix,
     } else {
         isAsync_ = false;
     }
-    buff_.RetrieveAll();
+
     lineCount_ = 0;
 
     time_t timer = time(nullptr);
@@ -68,83 +68,89 @@ void Log::init(int level = 1, const char* path, const char* suffix,
     snprintf(fileName, LOG_NAME_LEN - 1, "%s/%04d_%02d_%02d%s", 
             path_, t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, suffix_);
     toDay_ = t.tm_mday;
-    
-    if(fp_) { fclose(fp_); }
-    fp_ = fopen(fileName, "a");
-    if(fp_ == nullptr) {
-        mkdir(path_, 0777);
+
+    {
+        lock_guard<mutex> locker(mtx_);
+        buff_.RetrieveAll();
+        if(fp_) { 
+            fflush(fp_);
+            fclose(fp_); 
+        }
+
         fp_ = fopen(fileName, "a");
-    } 
-    assert(fp_ != nullptr);
+        if(fp_ == nullptr) {
+            mkdir(path_, 0777);
+            fp_ = fopen(fileName, "a");
+        } 
+        assert(fp_ != nullptr);
+    }
+
 }
 
 void Log::write(int level, const char *format, ...) {
     if(isAsync_) { deque_->flush(); } 
-
     struct timeval now = {0, 0};
     gettimeofday(&now, nullptr);
     time_t tSec = now.tv_sec;
     struct tm *sysTime = localtime(&tSec);
     struct tm t = *sysTime;
-    
+    va_list vaList;
+
+    /* 日志日期 日志行数 */
+    if (toDay_ != t.tm_mday || (lineCount_ && (lineCount_  %  MAX_LINES == 0)))
     {
         unique_lock<mutex> locker(mtx_);
         locker.unlock();
-        /* 日志日期 日志行数 */
-        if (toDay_ != t.tm_mday || (lineCount_ && (lineCount_  %  MAX_LINES == 0)))
+        char newFile[LOG_NAME_LEN];
+        char tail[36] = {0};
+        snprintf(tail, 36, "%04d_%02d_%02d", t.tm_year + 1900, t.tm_mon + 1, t.tm_mday);
+
+        if (toDay_ != t.tm_mday)
         {
-            char newFile[LOG_NAME_LEN];
-            char tail[16] = {0};
-            snprintf(tail, 20, "%04d_%02d_%02d", t.tm_year + 1900, t.tm_mon + 1, t.tm_mday);
-
-            if (toDay_ != t.tm_mday)
-            {
-                snprintf(newFile, LOG_NAME_LEN - 1, "%s/%s%s", path_, tail, suffix_);
-                toDay_ = t.tm_mday;
-                lineCount_ = 0;
-            }
-            else {
-                snprintf(newFile, LOG_NAME_LEN - 1, "%s/%s-%d%s",
-                         path_, tail, (lineCount_  / MAX_LINES), suffix_);
-            }
-
-            locker.lock();
-            fflush(fp_);
-            fclose(fp_);
-            fp_ = fopen(newFile, "a");
-            assert(fp_ != nullptr);
+            snprintf(newFile, LOG_NAME_LEN - 72, "%s/%s%s", path_, tail, suffix_);
+            toDay_ = t.tm_mday;
+            lineCount_ = 0;
         }
-        lineCount_++;
+        else {
+            snprintf(newFile, LOG_NAME_LEN - 72, "%s/%s-%d%s", path_, tail, (lineCount_  / MAX_LINES), suffix_);
+        }
+        
+        locker.lock();
+        fflush(fp_);
+        fclose(fp_);
+        fp_ = fopen(newFile, "a");
+        assert(fp_ != nullptr);
     }
 
-    va_list vaList;
-    va_start(vaList, format);
     {
-        lock_guard<mutex> locker(mtx_);
+        unique_lock<mutex> locker(mtx_);
+        lineCount_++;
         int n = snprintf(buff_.BeginWrite(), 128, "%d-%02d-%02d %02d:%02d:%02d.%06ld ",
-            t.tm_year + 1900, t.tm_mon + 1, t.tm_mday,
-            t.tm_hour, t.tm_min, t.tm_sec, now.tv_usec);
+                    t.tm_year + 1900, t.tm_mon + 1, t.tm_mday,
+                    t.tm_hour, t.tm_min, t.tm_sec, now.tv_usec);
+                    
         buff_.HasWritten(n);
-        AppendLogLevel_();
-        
+        AppendLogLevelTitle_(level);
+
+        va_start(vaList, format);
         int m = vsnprintf(buff_.BeginWrite(), buff_.WritableBytes(), format, vaList);
+        va_end(vaList);
+
         buff_.HasWritten(m);
         buff_.Append("\n\0", 2);
-    }
 
-    if(isAsync_ || (deque_ && deque_->full())) {
-         deque_->push_back(buff_.RetrieveAllToStr());
-    } 
-    else {
-        lock_guard<mutex> locker(mtx_);
-        fputs(buff_.Peek(), fp_);
+        if(isAsync_ && deque_ && !deque_->full()) {
+            deque_->push_back(buff_.RetrieveAllToStr());
+        } else {
+            fputs(buff_.Peek(), fp_);
+        }
         buff_.RetrieveAll();
+
     }
-    va_end(vaList);
 }
 
-void Log::AppendLogLevel_() {
-    switch(level_) {
+void Log::AppendLogLevelTitle_(int level) {
+    switch(level) {
     case 0:
         buff_.Append("[debug]: ", 9);
         break;
