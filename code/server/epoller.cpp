@@ -1,7 +1,7 @@
 /*
  * @Author       : mark
  * @Date         : 2020-06-19
- * @copyleft GPL 2.0
+ * @copyleft Apache 2.0
  */
 
 #include "epoller.h"
