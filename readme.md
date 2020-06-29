@@ -23,11 +23,11 @@
 │   └── html
 ├── bin            可执行文件
 │   └── server
-├── build          编译
-│   └── Makefile
-├── log            日志目录
+├── log            日志
 │   └── xxx.log
 ├── webbench-1.5   压力测试
+├── build          
+│   └── Makefile
 ├── Makefile
 ├── LICENSE
 └── readme.md
