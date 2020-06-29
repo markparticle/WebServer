@@ -14,8 +14,8 @@ WebServer::WebServer(
     const char* dbName, int connPoolNum, int threadNum,
     bool openLog, int logLevel, int logQueSize):
     port_(port), openLinger_(OptLinger), isReactor_(isReactor), isClose_(false), 
-    timer_(new HeapTimer()), threadpool_(new ThreadPool(threadNum)), epoller_(new Epoller())
-{
+    timer_(new HeapTimer()), threadpool_(new ThreadPool(threadNum)), epoller_(new Epoller()) {
+    
     srcDir_ = getcwd(nullptr, 256);
     assert(srcDir_);
     strncat(srcDir_, "/resources/html", 16);
