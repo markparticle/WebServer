@@ -93,7 +93,7 @@ ssize_t Buffer::ReadFd(int fd, int* saveErrno) {
     iov[1].iov_base = buff;
     iov[1].iov_len = sizeof(buff);
 
-    const ssize_t len = readv(fd, iov, 2);
+    const int len = readv(fd, iov, 2);
     if(len < 0) {
         *saveErrno = errno;
     }

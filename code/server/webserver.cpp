@@ -9,12 +9,12 @@
 using namespace std;
 
 WebServer::WebServer(
-    int port, int trigMode, bool isReactor, bool OptLinger, int timeoutMS,
+    int port, int trigMode, int timeoutMS, bool isReactor, bool OptLinger,
     int sqlPort, const char* sqlUser, const  char* sqlPwd, 
     const char* dbName, int connPoolNum, int threadNum,
     bool openLog, int logLevel, int logQueSize):
     port_(port), openLinger_(OptLinger), isReactor_(isReactor), 
-    isClose_(false), timeoutMS_(timeoutMS), timer_(new HeapTimer()), 
+    timeoutMS_(timeoutMS), isClose_(false), timer_(new HeapTimer()), 
     threadpool_(new ThreadPool(threadNum)), epoller_(new Epoller()) {
     
     srcDir_ = getcwd(nullptr, 256);
@@ -53,6 +53,7 @@ WebServer::~WebServer() {
     close(listenFd_);
     isClose_ = true;
     free(srcDir_);
+    SqlConnPool::Instance()->ClosePool();
 }
 
 void WebServer::InitEventMode_(int trigMode) {
@@ -81,10 +82,12 @@ void WebServer::InitEventMode_(int trigMode) {
 }
 
 void WebServer::Start() {
-    int timeMS = 0;
+    int timeMS = -1;
     if(!isClose_) { LOG_INFO("========== Server start =========="); }
     while(!isClose_) {
-        if(timeoutMS_ > 0) { timeMS = timer_->GetNextTick(); }
+        if(timeoutMS_ > 0) {
+            timeMS = timer_->GetNextTick();
+        }
         int eventCnt = epoller_->Wait(timeMS);
         for(int i = 0; i < eventCnt; i++) {
             /* 处理事件 */
@@ -176,9 +179,7 @@ void WebServer::DealWrite_(HttpConn* client) {
 
 void WebServer::ExtentTime_(HttpConn* client) {
     assert(client);
-    if(timeoutMS_ > 0) { 
-        timer_->adjust(client->GetFd(), timeoutMS_);
-    }
+    if(timeoutMS_ > 0) { timer_->adjust(client->GetFd(), timeoutMS_); }
 }
 
 void WebServer::OnRead_(HttpConn* client) {
@@ -186,8 +187,7 @@ void WebServer::OnRead_(HttpConn* client) {
     int ret = -1;
     int readErrno = 0;
     ret = client->read(&readErrno);
- 
-    if(ret <= 0 && !(readErrno & EAGAIN) && !(readErrno & EWOULDBLOCK)) {
+    if(ret <= 0 && readErrno != EAGAIN) {
         CloseConn_(client);
         return;
     }
@@ -210,7 +210,7 @@ void WebServer::OnWrite_(HttpConn* client) {
         }
     }
     else if(ret < 0) {
-        if(writeErrno & EAGAIN) {
+        if(writeErrno == EAGAIN) {
             /* 继续传输 */
             epoller_->ModFd(client->GetFd(), connEvent_ | EPOLLOUT);
             return;

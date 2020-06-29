@@ -62,8 +62,8 @@ int HttpConn::GetPort() const {
     return addr_.sin_port;
 }
 
-size_t HttpConn::read(int* saveErrno) {
-    size_t len = -1;
+ssize_t HttpConn::read(int* saveErrno) {
+    ssize_t len = -1;
     do {
         len = readBuff_.ReadFd(fd_, saveErrno);
         if (len <= 0) {
@@ -73,8 +73,8 @@ size_t HttpConn::read(int* saveErrno) {
     return len;
 }
 
-size_t HttpConn::write(int* saveErrno) {
-    int len = -1;
+ssize_t HttpConn::write(int* saveErrno) {
+    ssize_t len = -1;
     do {
         len = writev(fd_, iov_, iovCnt_);
         if(len <= 0) {
@@ -82,7 +82,7 @@ size_t HttpConn::write(int* saveErrno) {
             break;
         }
         if(iov_[0].iov_len + iov_[1].iov_len  == 0) { break; } /* 传输结束 */
-        else if(len > (int)iov_[0].iov_len) {
+        else if(static_cast<size_t>(len) > iov_[0].iov_len) {
             iov_[1].iov_base = (uint8_t*) iov_[1].iov_base + (len - iov_[0].iov_len);
             iov_[1].iov_len -= (len - iov_[0].iov_len);
             if(iov_[0].iov_len) {
@@ -101,6 +101,7 @@ size_t HttpConn::write(int* saveErrno) {
 
 void HttpConn::process() {
     if(request_.parse(readBuff_)) {
+        LOG_DEBUG("%s", request_.path().c_str());
         response_.Init(srcDir, request_.path(), request_.IsKeepAlive(), 200);
     } else {
         response_.Init(srcDir, request_.path(), false, 400);

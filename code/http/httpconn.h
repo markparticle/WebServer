@@ -26,8 +26,8 @@ public:
 
     void init(int sockFd, const sockaddr_in& addr);
     void reset();
-    size_t read(int* saveErrno);
-    size_t write(int* saveErrno);
+    ssize_t read(int* saveErrno);
+    ssize_t write(int* saveErrno);
 
     void Close();
 
