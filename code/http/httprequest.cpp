@@ -8,8 +8,7 @@ using namespace std;
 
 const unordered_set<string> HttpRequest::DEFAULT_HTML{
             "/index", "/register", "/login",
-             "/welcome", "/video", "/picture",
-             "/file"};
+             "/welcome", "/video", "/picture", };
 
 const unordered_map<string, int> HttpRequest::DEFAULT_HTML_TAG {
             {"/register.html", 0}, {"/login.html", 1},  };
@@ -127,10 +126,8 @@ void HttpRequest::ParsePost_() {
                 if(UserVerify(post_["username"], post_["password"], isLogin)) {
                     path_ = "/welcome.html";
                 } 
-                else if(isLogin) {
-                    path_ = "/logError.html";
-                }  else {
-                    path_ = "/registerError.html";
+                else {
+                    path_ = "/error.html";
                 }
             }
         }

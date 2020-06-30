@@ -25,6 +25,7 @@ Log::~Log() {
         writeThread_->join();
     }
     if(fp_) {
+        lock_guard<mutex> locker(mtx_);
         flush();
         fclose(fp_);
     }
