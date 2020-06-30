@@ -180,7 +180,8 @@ bool HttpRequest::UserVerify(const string &name, const string &pwd, bool isLogin
     LOG_INFO("Verify name:%s pwd:%s", name.c_str(), pwd.c_str());
     MYSQL* sql;
     SqlConnRAII(&sql,  SqlConnPool::Instance());
-  
+    assert(sql);
+    
     bool flag = false;
     unsigned int j = 0;
     char order[256] = { 0 };
