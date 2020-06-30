@@ -1,4 +1,4 @@
-# TinyWebServer
+# WebServer
 
 ## 环境要求
 * C++14
