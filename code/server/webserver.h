@@ -26,7 +26,7 @@
 class WebServer {
 public:
     WebServer(
-        int port, int trigMode, int timeoutMS, bool isReactor, bool OptLinger, 
+        int port, int trigMode, int timeoutMS, bool OptLinger, 
         int sqlPort, const char* sqlUser, const  char* sqlPwd, 
         const char* dbName, int connPoolNum, int threadNum,
         bool openLog, int logLevel, int logQueSize);
@@ -56,7 +56,6 @@ private:
 
     int port_;
     bool openLinger_;
-    bool isReactor_;
     int timeoutMS_;  /* 毫秒MS */
     bool isClose_;
     int listenFd_;

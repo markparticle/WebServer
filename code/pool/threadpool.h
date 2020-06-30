@@ -49,7 +49,7 @@ public:
     }
 
     template<class F>
-    void addTask(F&& task) {
+    void AddTask(F&& task) {
         {
             std::lock_guard<std::mutex> locker(pool_->mtx);
             pool_->tasks.emplace(std::forward<F>(task));
