@@ -1,8 +1,18 @@
 # WebServer
+用C++实现的高性能服务器，经过webbenchh压力测试可以实现上万的QPS
+
+## 功能
+* 使用正则解析HTTP请求报文，可以处理静态资源请求
+* 用最小堆实现的定时器，支持HTTP长连接以及超时断开
+* 实现线程池，利用多线程处理IO操作，实现Reactor反应器模式
+* 实现自动增长的动态缓冲区，作为接收与发送的缓冲区
+* 实现数据库连接池，提高对数据库操作的性能
+* 通过访问数据库操作实现用户注册、登录功能
+* 实现异步日志系统，记录服务器运行状态
 
 ## 环境要求
-* C++14
 * Linux
+* C++14
 * MySql
 
 ## 目录树
@@ -21,11 +31,14 @@
 │   ├── Makefile
 │   └── test.cpp
 ├── resources      静态资源
-│   └── html
+│   ├── index.html
+│   ├── image
+│   ├── video
+│   ├── js
+│   └── css
 ├── bin            可执行文件
 │   └── server
-├── log            日志
-│   └── xxx.log
+├── log            日志文件
 ├── webbench-1.5   压力测试
 ├── build          
 │   └── Makefile
@@ -34,16 +47,6 @@
 └── readme.md
 ```
 
-## 功能
-* IO模型：Reactor/Proactor
-* 实现 ET/LT(Epoll触发模式)的socket听/读/写
-* HTTP请求报文解析
-* 动态缓冲区
-* 线程池、数据库连接池
-* 定时器
-* 日志系统
-* 大文件接收
-* 注册登录
 
 ## 项目启动
 ```bash
@@ -66,13 +69,10 @@ make
 * QPS 9000~10000
 
 ## TODO
-* HTTP请求体数据解析 Json/form-data
-* Config(Json格式)
+* config配置
 * 完善单元测试
-* 完善循环缓冲区
+* 实现循环缓冲区
 * HTTPS加密(Cryto++库)
-* 文件压缩
-* 文件传输
 * 登录 cookie/session
 
 
