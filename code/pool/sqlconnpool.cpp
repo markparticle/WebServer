@@ -26,6 +26,7 @@ void SqlConnPool::Init(const char* host, int port,
         sql = mysql_init(sql);
         if (!sql) {
             LOG_ERROR("MySql init error!");
+            assert(sql);
         }
         sql = mysql_real_connect(sql, host,
                                  user, pwd,

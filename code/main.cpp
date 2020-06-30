@@ -12,7 +12,7 @@ int main() {
     WebServer server(
         1316, 3, 5000, true, false,        /* 端口 ET模式 timeoutMs Proactor/Reactor(使用异步线程池) 优雅退出  */
         3306, "root", "root", "webserver", /* Mysql配置 */
-        100, 6, false, 0, 0);              /* 连接池数量 线程池数量 日志开关 日志等级 日志异步队列容量 */
+        100, 6, true, 0, 0);              /* 连接池数量 线程池数量 日志开关 日志等级 日志异步队列容量 */
     server.Start();
 } 
   
