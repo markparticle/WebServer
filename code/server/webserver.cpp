@@ -9,14 +9,13 @@
 using namespace std;
 
 WebServer::WebServer(
-    int port, int trigMode, int timeoutMS, bool isReactor, bool OptLinger,
-    int sqlPort, const char* sqlUser, const  char* sqlPwd, 
-    const char* dbName, int connPoolNum, int threadNum,
-    bool openLog, int logLevel, int logQueSize):
-    port_(port), openLinger_(OptLinger), isReactor_(isReactor), 
-    timeoutMS_(timeoutMS), isClose_(false), timer_(new HeapTimer()), 
-    threadpool_(new ThreadPool(threadNum)), epoller_(new Epoller()) {
-    
+            int port, int trigMode, int timeoutMS, bool OptLinger,
+            int sqlPort, const char* sqlUser, const  char* sqlPwd, 
+            const char* dbName, int connPoolNum, int threadNum,
+            bool openLog, int logLevel, int logQueSize):
+            port_(port), openLinger_(OptLinger), timeoutMS_(timeoutMS), isClose_(false), 
+            timer_(new HeapTimer()), threadpool_(new ThreadPool(threadNum)), epoller_(new Epoller()) 
+    {
     srcDir_ = getcwd(nullptr, 256);
     assert(srcDir_);
     strncat(srcDir_, "/resources/", 16);
@@ -32,16 +31,10 @@ WebServer::WebServer(
         if(isClose_) { LOG_ERROR("========== Server init error!=========="); }
         else {
             LOG_INFO("========== Server init ==========");
-            
-            LOG_INFO("Port:%d, OpenLinger: %s, IO Mode: %s", 
-                            port_, OptLinger? "true":"false",
-                            isReactor_?"Reactor":"Proctor");
-
-
+            LOG_INFO("Port:%d, OpenLinger: %s", port_, OptLinger? "true":"false");
             LOG_INFO("Listen Mode: %s, OpenConn Mode: %s", 
                             (listenEvent_ & EPOLLET ? "ET": "LT"), 
                             (connEvent_ & EPOLLET ? "ET": "LT"));
-
             LOG_INFO("LogSys level: %d", logLevel);
             LOG_INFO("srcDir: %s", HttpConn::srcDir);
             LOG_INFO("SqlConnPool num: %d, ThreadPool num: %d", connPoolNum, threadNum);
@@ -97,7 +90,6 @@ void WebServer::Start() {
                 DealListen_();
             }
             else if(events & (EPOLLRDHUP | EPOLLHUP | EPOLLERR)) {
-                LOG_DEBUG("!!!!!!!EVENT QUIT %d %d %d", events & EPOLLRDHUP, events & EPOLLHUP, EPOLLERR);
                 assert(users_.count(fd) > 0);
                 CloseConn_(&users_[fd]);
             }
@@ -160,21 +152,13 @@ void WebServer::DealListen_() {
 void WebServer::DealRead_(HttpConn* client) {
     assert(client);
     ExtentTime_(client);
-    if(isReactor_) {
-        threadpool_->addTask(std::bind(&WebServer::OnRead_, this, client));
-    } else {
-        OnRead_(client);
-    }
+    threadpool_->AddTask(std::bind(&WebServer::OnRead_, this, client));
 }
 
 void WebServer::DealWrite_(HttpConn* client) {
     assert(client);
     ExtentTime_(client);
-    if(isReactor_) {
-        threadpool_->addTask(std::bind(&WebServer::OnWrite_, this, client));
-    } else {
-        OnWrite_(client);
-    }
+    threadpool_->AddTask(std::bind(&WebServer::OnWrite_, this, client));
 }
 
 void WebServer::ExtentTime_(HttpConn* client) {
