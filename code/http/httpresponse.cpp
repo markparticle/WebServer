@@ -37,10 +37,10 @@ const unordered_map<int, string> HttpResponse::CODE_STATUS = {
 };
 
 const unordered_map<int, string> HttpResponse::CODE_PATH = {
-    { 400, "/404.html" },
+    { 400, "/400.html" },
     { 403, "/403.html" },
     { 404, "/404.html" },
-    { 500, "/405.html" },
+    { 500, "/500.html" },
 };
 
 HttpResponse::HttpResponse() {
