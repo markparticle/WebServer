@@ -55,7 +55,7 @@
 create database yourdb;
 
 // 创建user表
-USE yourdb;e
+USE yourdb;
 CREATE TABLE user(
     username char(50) NULL,
     password char(50) NULL
