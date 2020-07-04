@@ -26,6 +26,7 @@ const unordered_map<string, string> HttpResponse::SUFFIX_TYPE = {
     { ".gz",    "application/x-gzip" },
     { ".tar",   "application/x-tar" },
     { ".css",   "text/css "},
+    { ".js",    "text/javascript "},
 };
 
 const unordered_map<int, string> HttpResponse::CODE_STATUS = {
