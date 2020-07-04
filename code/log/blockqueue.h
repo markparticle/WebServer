@@ -83,7 +83,7 @@ void BlockDeque<T>::Close() {
 
 template<class T>
 void BlockDeque<T>::flush() {
-    condConsumer_.notify_all();
+    condConsumer_.notify_one();
 };
 
 template<class T>
@@ -123,7 +123,7 @@ void BlockDeque<T>::push_back(const T &item) {
         condProducer_.wait(locker);
     }
     deq_.push_back(item);
-    condConsumer_.notify_all();
+    condConsumer_.notify_one();
 }
 
 template<class T>
@@ -133,7 +133,7 @@ void BlockDeque<T>::push_front(const T &item) {
         condProducer_.wait(locker);
     }
     deq_.push_front(item);
-    condConsumer_.notify_all();
+    condConsumer_.notify_one();
 }
 
 template<class T>
@@ -159,7 +159,7 @@ bool BlockDeque<T>::pop(T &item) {
     }
     item = deq_.front();
     deq_.pop_front();
-    condProducer_.notify_all();
+    condProducer_.notify_one();
     return true;
 }
 
@@ -177,7 +177,7 @@ bool BlockDeque<T>::pop(T &item, int timeout) {
     }
     item = deq_.front();
     deq_.pop_front();
-    condProducer_.notify_all();
+    condProducer_.notify_one();
     return true;
 }
 
