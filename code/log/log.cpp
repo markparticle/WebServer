@@ -85,11 +85,9 @@ void Log::init(int level = 1, const char* path, const char* suffix,
         } 
         assert(fp_ != nullptr);
     }
-
 }
 
 void Log::write(int level, const char *format, ...) {
-    if(isAsync_) { deque_->flush(); } 
     struct timeval now = {0, 0};
     gettimeofday(&now, nullptr);
     time_t tSec = now.tv_sec;
@@ -147,7 +145,6 @@ void Log::write(int level, const char *format, ...) {
             fputs(buff_.Peek(), fp_);
         }
         buff_.RetrieveAll();
-
     }
 }
 
