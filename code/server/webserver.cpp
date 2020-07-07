@@ -235,6 +235,8 @@ bool WebServer::InitSocket_() {
     }
     
     int optval = 1;
+    /* 端口复用 */
+    /* 。但是，这些套接字并不是所有都能读取信息，只有最后一个套接字会正常接收数据。 */
     ret = setsockopt(listenFd_, SOL_SOCKET, SO_REUSEADDR, (const void*)&optval, sizeof(int));
     if(ret == -1) {
         LOG_ERROR("set socket setsockopt error !");
