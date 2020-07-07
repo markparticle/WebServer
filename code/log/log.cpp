@@ -169,8 +169,13 @@ void Log::AppendLogLevelTitle_(int level) {
 }
 
 void Log::flush(void) {
-    lock_guard<mutex> locker(mtx_);
-    fflush(fp_);
+    {
+        lock_guard<mutex> locker(mtx_);
+        fflush(fp_);
+    }
+    if(isAsync_) { 
+        deque_->flush(); 
+    }
 }
 
 void Log::AsyncWrite_() {

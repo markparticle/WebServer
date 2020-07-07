@@ -70,7 +70,6 @@ private:
         if (log->IsOpen() && log->GetLevel() <= level) {\
             log->write(level, format, ##__VA_ARGS__); \
             log->flush();\
-            if(isAsync_) { deque_->flush(); } \
         }\
     } while(0);
 
