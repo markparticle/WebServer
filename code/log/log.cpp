@@ -74,7 +74,7 @@ void Log::init(int level = 1, const char* path, const char* suffix,
         lock_guard<mutex> locker(mtx_);
         buff_.RetrieveAll();
         if(fp_) { 
-            fflush(fp_);
+            flush();
             fclose(fp_); 
         }
 
@@ -116,7 +116,7 @@ void Log::write(int level, const char *format, ...) {
         }
         
         locker.lock();
-        fflush(fp_);
+        flush();
         fclose(fp_);
         fp_ = fopen(newFile, "a");
         assert(fp_ != nullptr);
@@ -168,14 +168,11 @@ void Log::AppendLogLevelTitle_(int level) {
     }
 }
 
-void Log::flush(void) {
-    {
-        lock_guard<mutex> locker(mtx_);
-        fflush(fp_);
-    }
+void Log::flush() {
     if(isAsync_) { 
         deque_->flush(); 
     }
+    fflush(fp_);
 }
 
 void Log::AsyncWrite_() {

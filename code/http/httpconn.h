@@ -36,7 +36,7 @@ public:
     const char* GetIP() const;
     sockaddr_in GetAddr() const;
     
-    void process();
+    bool process();
     int ToWriteBytes() { 
         return iov_[0].iov_len + iov_[1].iov_len; 
     }

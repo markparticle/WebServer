@@ -21,8 +21,8 @@ void HttpRequest::Init() {
 }
 
 bool HttpRequest::IsKeepAlive() const {
-    if(post_.count("Connection") == 1) {
-        return post_.find("Connection")->second == "Keep-Alive" && version_ == "1.1";
+    if(header_.count("Connection") == 1) {
+        return header_.find("Connection")->second == "keep-alive" && version_ == "1.1";
     }
     return false;
 }
@@ -46,7 +46,7 @@ bool HttpRequest::parse(Buffer& buff) {
         case HEADERS:
             ParseHeader_(line);
             if(buff.ReadableBytes() <= 2) {
-                 state_ = FINISH;
+                state_ = FINISH;
             }
             break;
         case BODY:
@@ -57,7 +57,6 @@ bool HttpRequest::parse(Buffer& buff) {
         }
         if(lineEnd == buff.BeginWrite()) { break; }
         buff.RetrieveUntil(lineEnd + 2);
-
     }
     LOG_DEBUG("[%s], [%s], [%s]", method_.c_str(), path_.c_str(), version_.c_str());
     return true;

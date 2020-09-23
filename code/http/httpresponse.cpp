@@ -55,10 +55,10 @@ HttpResponse::~HttpResponse() {
 }
 
 void HttpResponse::Init(const string& srcDir, string& path, bool isKeepAlive, int code){
-    assert(srcDir != "" && path != "");
+    assert(srcDir != "");
     if(mmFile_) { UnmapFile(); }
     code_ = code;
-    isKeepAlive_ = isKeepAlive_;
+    isKeepAlive_ = isKeepAlive;
     path_ = path;
     srcDir_ = srcDir;
     mmFile_ = nullptr; 
@@ -112,8 +112,8 @@ void HttpResponse::AddStateLine_(Buffer& buff) {
 void HttpResponse::AddHeader_(Buffer& buff) {
     buff.Append("Connection: ");
     if(isKeepAlive_) {
-        buff.Append("Keep-Alive\r\n");
-        buff.Append("Keep-Alive: timeout=10000\r\n");
+        buff.Append("keep-alive\r\n");
+        buff.Append("keep-alive: max=5, timeout=120\r\n");
     } else{
         buff.Append("close\r\n");
     }

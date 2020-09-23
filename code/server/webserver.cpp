@@ -175,8 +175,15 @@ void WebServer::OnRead_(HttpConn* client) {
         CloseConn_(client);
         return;
     }
-    client->process();
-    epoller_->ModFd(client->GetFd(), connEvent_ | EPOLLOUT);
+    OnProcess(client);
+}
+
+void WebServer::OnProcess(HttpConn* client) {
+    if(client->process()) {
+        epoller_->ModFd(client->GetFd(), connEvent_ | EPOLLOUT);
+    } else {
+        epoller_->ModFd(client->GetFd(), connEvent_ | EPOLLIN);
+    }
 }
  
 void WebServer::OnWrite_(HttpConn* client) {
@@ -187,9 +194,7 @@ void WebServer::OnWrite_(HttpConn* client) {
     if(client->ToWriteBytes() == 0) {
         /* 传输完成 */
         if(client->IsKeepAlive()) {
-            LOG_DEBUG("keepAlive!");
-            client->reset();
-            epoller_->ModFd(client->GetFd(), connEvent_ | EPOLLIN);
+            OnProcess(client);
             return;
         }
     }
@@ -236,7 +241,7 @@ bool WebServer::InitSocket_() {
     
     int optval = 1;
     /* 端口复用 */
-    /* 。但是，这些套接字并不是所有都能读取信息，只有最后一个套接字会正常接收数据。 */
+    /* 只有最后一个套接字会正常接收数据。 */
     ret = setsockopt(listenFd_, SOL_SOCKET, SO_REUSEADDR, (const void*)&optval, sizeof(int));
     if(ret == -1) {
         LOG_ERROR("set socket setsockopt error !");

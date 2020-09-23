@@ -33,7 +33,6 @@ void HttpConn::reset() {
     writeBuff_.RetrieveAll();
     readBuff_.RetrieveAll();
     isClose_ = false;
-    request_.Init();
 }
 
 void HttpConn::Close() {
@@ -99,13 +98,18 @@ ssize_t HttpConn::write(int* saveErrno) {
     return len;
 }
 
-void HttpConn::process() {
-    if(request_.parse(readBuff_)) {
+bool HttpConn::process() {
+    request_.Init();
+    if(readBuff_.ReadableBytes() <= 0) {
+        return false;
+    }
+    else if(request_.parse(readBuff_)) {
         LOG_DEBUG("%s", request_.path().c_str());
         response_.Init(srcDir, request_.path(), request_.IsKeepAlive(), 200);
     } else {
         response_.Init(srcDir, request_.path(), false, 400);
     }
+
     response_.MakeResponse(writeBuff_);
     /* 响应头 */
     iov_[0].iov_base = const_cast<char*>(writeBuff_.Peek());
@@ -119,4 +123,5 @@ void HttpConn::process() {
         iovCnt_ = 2;
     } 
     LOG_DEBUG("filesize:%d, %d  to %d", response_.FileLen() , iovCnt_, ToWriteBytes());
+    return true;
 }
