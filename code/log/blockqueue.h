@@ -62,7 +62,7 @@ private:
 template<class T>
 BlockDeque<T>::BlockDeque(size_t MaxCapacity) :capacity_(MaxCapacity) {
     assert(MaxCapacity > 0);
-    isClose_  = false;
+    isClose_ = false;
 }
 
 template<class T>
