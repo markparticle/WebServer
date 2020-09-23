@@ -102,7 +102,7 @@ ssize_t Buffer::ReadFd(int fd, int* saveErrno) {
     }
     else {
         writePos_ = buffer_.size();
-        Append(buff, len - writePos_);
+        Append(buff, len - writable);
     }
     return len;
 }
