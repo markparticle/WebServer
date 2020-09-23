@@ -92,4 +92,4 @@ make
 
 致谢
 Linux高性能服务器编程，游双著.
-(@qinguoyi)(https://github.com/qinguoyi/TinyWebServer)
+[@qinguoyi](https://github.com/qinguoyi/TinyWebServer)
