@@ -139,7 +139,7 @@ void WebServer::DealListen_() {
     socklen_t len = sizeof(addr);
     do {
         int fd = accept(listenFd_, (struct sockaddr *)&addr, &len);
-        if(fd <= 0) { break;}
+        if(fd <= 0) { return;}
         else if(HttpConn::userCount >= MAX_FD) {
             SendError_(fd, "Server busy!");
             LOG_WARN("Clients is full!");
