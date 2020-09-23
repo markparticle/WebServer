@@ -49,7 +49,8 @@ private:
 
     void OnRead_(HttpConn* client);
     void OnWrite_(HttpConn* client);
-    
+    void OnProcess(HttpConn* client);
+
     static const int MAX_FD = 65536;
 
     static int SetFdNonblock(int fd);
