@@ -52,11 +52,8 @@ void HeapTimer::add(int id, int timeout, const TimeoutCallBack& cb) {
     else {
         /* 已有结点：调整堆 */
         i = ref_[id];
-        heap_[i].expires = Clock::now() + MS(timeout);
+        adjust(id, timeout);
         heap_[i].cb = cb;
-        if(!siftdown_(i, heap_.size())) {
-            siftup_(i);
-        }
     }
 }
 
@@ -93,7 +90,8 @@ void HeapTimer::adjust(int id, int timeout) {
     /* 调整指定id的结点 */
     assert(!heap_.empty() && ref_.count(id) > 0);
     heap_[ref_[id]].expires = Clock::now() + MS(timeout);;
-    siftdown_(ref_[id], heap_.size());
+    if(!siftdown_(ref_[id], heap_.size()))
+        siftup_(ref[id]);
 }
 
 void HeapTimer::tick() {
