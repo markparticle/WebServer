@@ -128,7 +128,7 @@ const char* Buffer::BeginPtr_() const {
 
 void Buffer::MakeSpace_(size_t len) {
     if(WritableBytes() + PrependableBytes() < len) {
-        buffer_.resize(writePos_ + len + 1);
+        buffer_.resize(writePos_ + len);
     } 
     else {
         size_t readable = ReadableBytes();
