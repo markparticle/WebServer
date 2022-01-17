@@ -47,8 +47,6 @@ private:
     const char* path_;
     const char* suffix_;
 
-    int MAX_LINES_;
-
     int lineCount_;
     int toDay_;
 
