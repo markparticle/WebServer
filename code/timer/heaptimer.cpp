@@ -91,7 +91,7 @@ void HeapTimer::adjust(int id, int timeout) {
     assert(!heap_.empty() && ref_.count(id) > 0);
     heap_[ref_[id]].expires = Clock::now() + MS(timeout);;
     if(!siftdown_(ref_[id], heap_.size()))
-        siftup_(ref[id]);
+        siftup_(ref_[id]);
 }
 
 void HeapTimer::tick() {
