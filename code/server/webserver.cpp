@@ -22,12 +22,14 @@ WebServer::WebServer(
     HttpConn::userCount = 0;
     HttpConn::srcDir = srcDir_;
     SqlConnPool::Instance()->Init("localhost", sqlPort, sqlUser, sqlPwd, dbName, connPoolNum);
+    if(openLog) {
+                Log::Instance()->init(logLevel, "./log", ".log", logQueSize);
+    }
 
     InitEventMode_(trigMode);
     if(!InitSocket_()) { isClose_ = true;}
 
     if(openLog) {
-        Log::Instance()->init(logLevel, "./log", ".log", logQueSize);
         if(isClose_) { LOG_ERROR("========== Server init error!=========="); }
         else {
             LOG_INFO("========== Server init ==========");
