@@ -13,3 +13,4 @@
 *.exe
 /.vscode
 *.history
+build/
