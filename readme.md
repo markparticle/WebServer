@@ -53,10 +53,10 @@
 需要先配置好对应的数据库
 ```bash
 // 建立yourdb库
-create database yourdb;
+create database webserver;
 
 // 创建user表
-USE yourdb;
+USE webserver;
 CREATE TABLE user(
     username char(50) NULL,
     password char(50) NULL
