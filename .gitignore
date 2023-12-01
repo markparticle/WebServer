@@ -12,3 +12,4 @@
 *.log
 *.exe
 /.vscode
+*.history

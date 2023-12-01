@@ -50,8 +50,9 @@ WebServer::~WebServer() {
 }
 
 void WebServer::InitEventMode_(int trigMode) {
-    listenEvent_ = EPOLLRDHUP;
-    connEvent_ = EPOLLONESHOT | EPOLLRDHUP;
+    /* 这里需要设置连接和监听两种socket的模式 */
+    listenEvent_ = EPOLLRDHUP; // 对方关闭连接，或者对方关闭写操作
+    connEvent_ = EPOLLONESHOT | EPOLLRDHUP; // 一次事件，对方关闭连接，或者对方关闭写操作
     switch (trigMode)
     {
     case 0:
@@ -74,6 +75,11 @@ void WebServer::InitEventMode_(int trigMode) {
     HttpConn::isET = (connEvent_ & EPOLLET);
 }
 
+/*
+    调用start后，服务器开始运行，主线程进入epoll_wait状态，等待事件发生。
+    有事件发生后处理事件，处理完后继续进入epoll_wait状态。
+
+*/
 void WebServer::Start() {
     int timeMS = -1;  /* epoll wait timeout == -1 无事件将阻塞 */
     if(!isClose_) { LOG_INFO("========== Server start =========="); }
@@ -89,15 +95,15 @@ void WebServer::Start() {
             if(fd == listenFd_) {
                 DealListen_();
             }
-            else if(events & (EPOLLRDHUP | EPOLLHUP | EPOLLERR)) {
-                assert(users_.count(fd) > 0);
+            else if(events & (EPOLLRDHUP | EPOLLHUP | EPOLLERR)) { // 对方关闭连接，或者对方关闭写操作
+                assert(users_.count(fd) > 0); // 判断users_中是否有fd，若没有程序终止
                 CloseConn_(&users_[fd]);
             }
-            else if(events & EPOLLIN) {
+            else if(events & EPOLLIN) { // EPOLLIN：可读事件
                 assert(users_.count(fd) > 0);
                 DealRead_(&users_[fd]);
             }
-            else if(events & EPOLLOUT) {
+            else if(events & EPOLLOUT) { // EPOLLOUT：可写事件
                 assert(users_.count(fd) > 0);
                 DealWrite_(&users_[fd]);
             } else {
@@ -212,28 +218,28 @@ void WebServer::OnWrite_(HttpConn* client) {
 bool WebServer::InitSocket_() {
     int ret;
     struct sockaddr_in addr;
-    if(port_ > 65535 || port_ < 1024) {
+    if(port_ > 65535 || port_ < 1024) { // 0 ~ 1023 为保留端口，65535以上为无效端口
         LOG_ERROR("Port:%d error!",  port_);
         return false;
     }
-    addr.sin_family = AF_INET;
-    addr.sin_addr.s_addr = htonl(INADDR_ANY);
-    addr.sin_port = htons(port_);
-    struct linger optLinger = { 0 };
+    addr.sin_family = AF_INET; // IPv4，IPv6为AF_INET6
+    addr.sin_addr.s_addr = htonl(INADDR_ANY); // INADDR_ANY：允许任何IP地址连接
+    addr.sin_port = htons(port_); // 设置端口号
+    struct linger optLinger = { 0 }; 
     if(openLinger_) {
         /* 优雅关闭: 直到所剩数据发送完毕或超时 */
         optLinger.l_onoff = 1;
         optLinger.l_linger = 1;
     }
 
-    listenFd_ = socket(AF_INET, SOCK_STREAM, 0);
-    if(listenFd_ < 0) {
+    listenFd_ = socket(AF_INET, SOCK_STREAM, 0); // 创建套接字，SOCK_STREAM：TCP，失败返回-1
+    if(listenFd_ == -1) {
         LOG_ERROR("Create socket error!", port_);
         return false;
     }
 
     ret = setsockopt(listenFd_, SOL_SOCKET, SO_LINGER, &optLinger, sizeof(optLinger));
-    if(ret < 0) {
+    if(ret == -1) {
         close(listenFd_);
         LOG_ERROR("Init linger error!", port_);
         return false;
@@ -242,6 +248,11 @@ bool WebServer::InitSocket_() {
     int optval = 1;
     /* 端口复用 */
     /* 只有最后一个套接字会正常接收数据。 */
+    /* 
+        SO_REUSEADDR选项：允许重用本地地址，即使socket处于TIME_WAIT状态
+        此时，允许新的socket绑定到与之前绑定的端口号相同的地址，但是必须使用不同的socket描述符。
+        需要注意的是：可能会收到之前连接残留的数据包
+     */
     ret = setsockopt(listenFd_, SOL_SOCKET, SO_REUSEADDR, (const void*)&optval, sizeof(int));
     if(ret == -1) {
         LOG_ERROR("set socket setsockopt error !");
@@ -249,21 +260,22 @@ bool WebServer::InitSocket_() {
         return false;
     }
 
-    ret = bind(listenFd_, (struct sockaddr *)&addr, sizeof(addr));
-    if(ret < 0) {
+    ret = bind(listenFd_, (struct sockaddr *)&addr, sizeof(addr)); // 绑定端口
+    if(ret == -1) {
         LOG_ERROR("Bind Port:%d error!", port_);
         close(listenFd_);
         return false;
     }
 
     ret = listen(listenFd_, 6);
-    if(ret < 0) {
+    if(ret == -1) {
         LOG_ERROR("Listen port:%d error!", port_);
         close(listenFd_);
         return false;
     }
+    // 无论是监听还是连接的socket都需要注册到epoll中
     ret = epoller_->AddFd(listenFd_,  listenEvent_ | EPOLLIN);
-    if(ret == 0) {
+    if(ret == false) {
         LOG_ERROR("Add listen error!");
         close(listenFd_);
         return false;
@@ -273,6 +285,7 @@ bool WebServer::InitSocket_() {
     return true;
 }
 
+// 设置文件描述符为非阻塞
 int WebServer::SetFdNonblock(int fd) {
     assert(fd > 0);
     return fcntl(fd, F_SETFL, fcntl(fd, F_GETFD, 0) | O_NONBLOCK);

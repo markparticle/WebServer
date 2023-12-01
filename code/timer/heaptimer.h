@@ -24,7 +24,7 @@ typedef Clock::time_point TimeStamp;
 struct TimerNode {
     int id;
     TimeStamp expires;
-    TimeoutCallBack cb;
+    TimeoutCallBack cb; // 定时器节点到期时要执行的操作
     bool operator<(const TimerNode& t) {
         return expires < t.expires;
     }
@@ -47,6 +47,7 @@ public:
 
     void pop();
 
+    // 得到堆顶的超时时间
     int GetNextTick();
 
 private:

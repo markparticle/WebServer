@@ -17,11 +17,11 @@
 
 #include "epoller.h"
 #include "../log/log.h"
-#include "../timer/heaptimer.h"
-#include "../pool/sqlconnpool.h"
-#include "../pool/threadpool.h"
-#include "../pool/sqlconnRAII.h"
-#include "../http/httpconn.h"
+#include "../timer/heaptimer.h" // 定时器处理非活动连接，基于升序链表的定时器，超时断开连接
+#include "../pool/sqlconnpool.h" // 数据库连接池
+#include "../pool/threadpool.h" // 线程池
+#include "../pool/sqlconnRAII.h" // 数据库连接池RAII，RAII：资源获取即初始化，自动释放资源
+#include "../http/httpconn.h" // http连接处理类
 
 class WebServer {
 public:
@@ -35,9 +35,9 @@ public:
     void Start();
 
 private:
-    bool InitSocket_(); 
-    void InitEventMode_(int trigMode);
-    void AddClient_(int fd, sockaddr_in addr);
+    bool InitSocket_(); // 初始化套接字
+    void InitEventMode_(int trigMode); // 初始化触发模式，有LT和ET两种，LT是默认的，ET是高速模式
+    void AddClient_(int fd, sockaddr_in addr); // 添加客户端
   
     void DealListen_();
     void DealWrite_(HttpConn* client);
@@ -56,14 +56,14 @@ private:
     static int SetFdNonblock(int fd);
 
     int port_;
-    bool openLinger_;
+    bool openLinger_; // 是否优雅关闭
     int timeoutMS_;  /* 毫秒MS */
     bool isClose_;
     int listenFd_;
-    char* srcDir_;
+    char* srcDir_; // 资源路径
     
-    uint32_t listenEvent_;
-    uint32_t connEvent_;
+    uint32_t listenEvent_; // 设置监听socket的事件类型，有读和写两种
+    uint32_t connEvent_; // 设置连接socket的事件类型，有读和写两种
    
     std::unique_ptr<HeapTimer> timer_;
     std::unique_ptr<ThreadPool> threadpool_;

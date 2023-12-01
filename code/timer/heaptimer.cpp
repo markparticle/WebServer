@@ -96,6 +96,7 @@ void HeapTimer::adjust(int id, int timeout) {
     siftdown_(ref_[id], heap_.size());
 }
 
+/* 清除超时节点 */
 void HeapTimer::tick() {
     /* 清除超时结点 */
     if(heap_.empty()) {
@@ -125,6 +126,7 @@ int HeapTimer::GetNextTick() {
     tick();
     size_t res = -1;
     if(!heap_.empty()) {
+        /* 计算堆顶的到期时间与当前时间的间隔作为结果返回 */
         res = std::chrono::duration_cast<MS>(heap_.front().expires - Clock::now()).count();
         if(res < 0) { res = 0; }
     }
