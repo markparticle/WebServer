@@ -16,7 +16,7 @@
 #include <sys/stat.h>         //mkdir
 #include "blockqueue.h"
 #include "../buffer/buffer.h"
-
+#include <string>
 class Log {
 public:
     void init(int level, const char* path = "./log", 
@@ -26,7 +26,7 @@ public:
     static Log* Instance();
     static void FlushLogThread();
 
-    void write(int level, const char *format,...);
+    void write(int level, const char* pcFileName, int iLine, const char* pcFunction, const char *format,...);
     void flush();
 
     int GetLevel();
@@ -63,12 +63,12 @@ private:
     std::unique_ptr<std::thread> writeThread_;
     std::mutex mtx_;
 };
-
+#define FILENAME(x) strchr(x,'/')?strrchr(x,'/')+1:x
 #define LOG_BASE(level, format, ...) \
     do {\
         Log* log = Log::Instance();\
         if (log->IsOpen() && log->GetLevel() <= level) {\
-            log->write(level, format, ##__VA_ARGS__); \
+            log->write(level,FILENAME(__FILE__) ,__LINE__,__func__, format, ##__VA_ARGS__); \
             log->flush();\
         }\
     } while(0);

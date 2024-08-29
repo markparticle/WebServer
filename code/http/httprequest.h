@@ -17,7 +17,8 @@
 #include "../log/log.h"
 #include "../pool/sqlconnpool.h"
 #include "../pool/sqlconnRAII.h"
-
+#include "socket.h"
+#include "../cJson/cJSON.h"
 class HttpRequest {
 public:
     enum PARSE_STATE {
@@ -42,7 +43,7 @@ public:
     ~HttpRequest() = default;
 
     void Init();
-    bool parse(Buffer& buff);
+    bool parse(Buffer& buff,int iSocketFd);
 
     std::string path() const;
     std::string& path();
@@ -63,7 +64,7 @@ private:
     bool ParseRequestLine_(const std::string& line);
     void ParseHeader_(const std::string& line);
     void ParseBody_(const std::string& line);
-
+    int ReciveBody_(Buffer& buff,int iSocketFd,ssize_t iHeadLen);
     void ParsePath_();
     void ParsePost_();
     void ParseFromUrlencoded_();

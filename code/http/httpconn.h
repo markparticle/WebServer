@@ -18,7 +18,7 @@
 #include "../buffer/buffer.h"
 #include "httprequest.h"
 #include "httpresponse.h"
-
+#include "socket.h"
 class HttpConn {
 public:
     HttpConn();

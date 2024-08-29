@@ -27,8 +27,12 @@ bool HttpRequest::IsKeepAlive() const {
     return false;
 }
 
-bool HttpRequest::parse(Buffer& buff) {
+bool HttpRequest::parse(Buffer& buff,int iSocketFd) {
     const char CRLF[] = "\r\n";
+    const char CRLFEND[] = "\r\n\r\n";
+    const char* lineEnd = search(buff.Peek(), buff.BeginWriteConst(), CRLFEND, CRLFEND + 4);
+    ssize_t iHeadLen = lineEnd-buff.Peek()+4;
+    fflush(stdout);
     if(buff.ReadableBytes() <= 0) {
         return false;
     }
@@ -50,7 +54,9 @@ bool HttpRequest::parse(Buffer& buff) {
             }
             break;
         case BODY:
+            ReciveBody_(buff,iSocketFd,iHeadLen);
             ParseBody_(line);
+            lineEnd = buff.BeginWrite();
             break;
         default:
             break;
@@ -58,8 +64,39 @@ bool HttpRequest::parse(Buffer& buff) {
         if(lineEnd == buff.BeginWrite()) { break; }
         buff.RetrieveUntil(lineEnd + 2);
     }
+    buff.RetrieveAll();
     LOG_DEBUG("[%s], [%s], [%s]", method_.c_str(), path_.c_str(), version_.c_str());
     return true;
+}
+
+int HttpRequest::ReciveBody_(Buffer& buff,int iSocketFd,ssize_t iHeadLen){
+    int iRet = -1;
+    do
+    {
+        std::string strContentLen = "0";
+        if(method_ == "POST" &&header_.count("Content-Length") == 1) {
+            strContentLen = header_.find("Content-Length")->second;
+            ssize_t iConLen = atol(strContentLen.c_str());
+            iConLen -= INITBUFFER_SIZE-iHeadLen;
+            char buf[512];
+            while (iConLen>0)
+            {
+                memset(buf,0,512);
+                /* code */
+                int iLen =  readn(iSocketFd,buf,512);
+                buff.Append(buf,iLen);
+                iConLen-=iLen;
+            }
+            fflush(stdout);
+            
+        }
+        
+        state_ = BODY;
+        iRet = 0;
+    } while (0);
+    
+    return iRet;
+    
 }
 
 void HttpRequest::ParsePath_() {
@@ -131,7 +168,12 @@ void HttpRequest::ParsePost_() {
             }
         }
     }   
+    if(method_ == "POST" && header_["Content-Type"] == "application/x-www-form-urlencoded") {
+
+    }
 }
+
+
 
 void HttpRequest::ParseFromUrlencoded_() {
     if(body_.size() == 0) { return; }

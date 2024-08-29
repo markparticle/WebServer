@@ -58,13 +58,29 @@ int HttpConn::GetPort() const {
 }
 
 ssize_t HttpConn::read(int* saveErrno) {
+    // readBuff_.RetrieveAll();
     ssize_t len = -1;
     do {
-        len = readBuff_.ReadFd(fd_, saveErrno);
-        if (len <= 0) {
+        len = readn(fd_,readBuff_.BeginWrite(),INITBUFFER_SIZE);
+        if(0>len){
+            break;
+            *saveErrno = errno;
+        }else if(len == 0){
             break;
         }
+        else
+        {
+            /* code */
+            readBuff_.HasWritten(len);
+            break;
+        }
+        
+        // len = readBuff_.ReadFd(fd_, saveErrno);
+        // if (len <= 0) {
+        //     break;
+        // }
     } while (isET);
+    // fflush(stdout);
     return len;
 }
 
@@ -99,7 +115,7 @@ bool HttpConn::process() {
     if(readBuff_.ReadableBytes() <= 0) {
         return false;
     }
-    else if(request_.parse(readBuff_)) {
+    else if(request_.parse(readBuff_,fd_)) {
         LOG_DEBUG("%s", request_.path().c_str());
         response_.Init(srcDir, request_.path(), request_.IsKeepAlive(), 200);
     } else {
