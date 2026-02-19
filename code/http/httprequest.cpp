@@ -228,9 +228,10 @@ bool HttpRequest::UserVerify(const string &name, const string &pwd, bool isLogin
             LOG_DEBUG( "Insert error!");
             flag = false; 
         }
-        flag = true;
+        else flag = true;
     }
-    SqlConnPool::Instance()->FreeConn(sql);
+    // RAII机制自动释放
+    // SqlConnPool::Instance()->FreeConn(sql);
     LOG_DEBUG( "UserVerify success!!");
     return flag;
 }
